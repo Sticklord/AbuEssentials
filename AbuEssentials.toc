@@ -1,0 +1,27 @@
+## Interface: 50400
+## Title: |cffffffffAbu|rSuxDix
+## Author: Abu
+## SavedVariablesPerCharacter: AbuEssentialsSavedVars
+## X-Credits: Mumin, for the name.
+
+Tools\animations.lua
+Tools\api.lua
+
+Config.lua
+Core.lua
+Scripts.lua
+Setup.lua
+
+Modules\Tabs\Group.lua
+Modules\Tabs\Social.lua
+Modules\Buffs.lua
+Modules\Mail.lua
+Modules\TalentMacro.lua
+Modules\ToolTip.lua
+Modules\Vendor.lua
+
+Skins\AddOns.lua
+Skins\EndCaps.lua
+Skins\MiniMap.lua
+Skins\Recolor.lua
+Skins\SpeechBubbles.lua
