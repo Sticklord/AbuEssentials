@@ -7,16 +7,11 @@ local AddonName, ns = ...
 
 local LOOTDELAY = 0.5
 local MAX_LOOPS = 10
-local cashCount, onlyCash, origInboxFrame_OnClick
+local onlyCash, origInboxFrame_OnClick
 
 local Mail = CreateFrame('Frame', "AbuMail", UIParent)
 local button 
-local DEBUG = false
-local function PRINT(...)
-	if DEBUG then
-		print(...)
-	end
-end
+
 local function breathe(self, elapsed)
 	self.ticker = self.ticker + elapsed
 
@@ -42,36 +37,27 @@ function Mail:ProcessMail()
 	local _, _, _, _, money, CODAmount, _, numItems = GetInboxHeaderInfo(self.index)
 	numItems = (not numItems) and 0 or numItems
 
-	PRINT("------- Check Mail: #"..self.index.." ---------")
 	if (money < 1) and (onlyCash or numItems == 0) or (CODAmount > 0) then
 		self.index = self.index - 1
-		PRINT("|  Nope, already looted, new mail: #"..self.index)
 		_, _, _, _, money, CODAmount, _, numItems = GetInboxHeaderInfo(self.index)
 		numItems = (not numItems) and 0 or numItems
-	else
-		PRINT("| Yep, this isnt looted")
 	end
 
 	if self.index <= 0 then 
 		return self:StopMail() 
 	end
 
-	PRINT("| Money = "..money, "numitems: "..numItems,"CODAmount: ",CODAmount)
-
 	if (money > 0) then
-		PRINT("| NoItems, looting money: ", money)
 		TakeInboxMoney(self.index)
 		self.delay = LOOTDELAY
-		if money and money > 0 then
-			cashCount = cashCount + money
+		if money and money > 0 and (self.lastMoneyLooted ~= self.index) then
+			self.cashCount = self.cashCount + money
+			self.lastMoneyLooted = self.index
 		end
 	elseif (not onlyCash) and (numItems > 0) and (CODAmount <= 0) and (checkBagSize() > 0) then
-		PRINT("| Looting MAIL",self.index,"items; ", numItems)
 		TakeInboxItem(self.index)
 		self.delay = LOOTDELAY
 	end
-	
-	PRINT("------- End of mail #"..self.index.." ---------")
 end
 
 function Mail:StopMail(msg)
@@ -84,9 +70,9 @@ function Mail:StopMail(msg)
 	if msg then
 		ns.Print(msg)
 	end
-	if cashCount > 0 then
-		ns.Print('Earned '..GetCoinTextureString(cashCount)..' from mailbox.')
-		cashCount = 0
+	if self.cashCount > 0 then
+		ns.Print('Earned '..GetCoinTextureString(self.cashCount)..' from mailbox.')
+		self.cashCount = 0
 	end
 	button:Enable()
 end
@@ -99,6 +85,7 @@ function Mail:GetMail(grabOnlyCash)
 		self.index = GetInboxNumItems()
 		self.delay = 0
 		self.ticker = 0
+		self.lastMoneyLooted = -1
 
 		onlyCash = grabOnlyCash
 		self:RegisterEvent("UI_ERROR_MESSAGE")
@@ -118,7 +105,7 @@ end
 
 local function Load(event, ...)
 	local self = Mail
-	cashCount = 0
+	self.cashCount = 0
 
 	if not button then -- Create Grab All Button
 		button = CreateFrame("Button", "AbuMail", InboxFrame, "UIPanelButtonTemplate")

@@ -1,4 +1,4 @@
-## Interface: 50400
+## Interface: 60000
 ## Title: |cffffffffAbu|rSuxDix
 ## Author: Abu
 ## SavedVariablesPerCharacter: AbuEssentialsSavedVars
@@ -12,8 +12,6 @@ Core.lua
 Scripts.lua
 Setup.lua
 
-Modules\Tabs\Group.lua
-Modules\Tabs\Social.lua
 Modules\Buffs.lua
 Modules\Mail.lua
 Modules\TalentMacro.lua

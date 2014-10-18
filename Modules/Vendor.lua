@@ -120,7 +120,7 @@ local function SellAndRestock(event, ...)
 					end
 
 					if (rest+stacks) > 0 and price > 0 then
-						ns.Print("Bought: "..item.." x"..need.." ("..GetCoinTextureString(price* (rest +(stacks*itemStackCount)))..")")
+						ns.Print("Bought "..item.." x"..need.." ("..GetCoinTextureString(price* (rest +(stacks*itemStackCount)))..")")
 					end
 				end
 			end

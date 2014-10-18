@@ -30,17 +30,21 @@ local fixNames = {
 
 local function UpdateMacros(event, ...)
 	if InCombatLockdown() then return end
-	for i = 1, GetNumTalents() do
-		local name, _, tier, column, selected = GetTalentInfo(i)
-		if selected then
-			local macrotext = GetMacroBody("Tier" .. tier)
-			if macrotext then 
-				if fixNames[name] then
-					name = fixNames[name]
+	local cSpec = GetActiveSpecGroup()
+	
+	for tier = 1, GetMaxTalentTier() do
+		for column = 1, 3 do
+			local id, name, _, selected = GetTalentInfo(tier, column, cSpec)
+			if selected then
+				local macrotext = GetMacroBody("Tier" .. tier)
+				if macrotext then 
+					if fixNames[name] then
+						name = fixNames[name]
+					end
+					-- match: Space, Space, Uppercase letter [any word, letter, " , - ' "]as many as possible, end on lowercase letter
+					macrotext = string.gsub(macrotext, "%s%s%u[A-Za-z0-9%,%-%'% ]+%l", "  " .. name)
+					EditMacro("Tier"..tier, nil, "INV_Misc_QuestionMark", macrotext)
 				end
-				-- match: Space, Space, Uppercase letter [any letter, any (,-' :)], end on lowercase letter
-				macrotext = string.gsub(macrotext, "%s%s%u[A-Za-z0-9%,%-%'% %:]+%l", "  " .. name)
-				EditMacro("Tier"..tier, nil, "INV_Misc_QuestionMark", macrotext)
 			end
 		end
 	end
@@ -49,3 +53,17 @@ end
 ns.RegisterEvent("PLAYER_ENTERING_WORLD", UpdateMacros)
 ns.RegisterEvent("PLAYER_TALENT_UPDATE", UpdateMacros)
 ns.RegisterEvent("ACTIVE_TALENT_GROUP_CHANGED", UpdateMacros)
+
+--[[macro: TotT
+#showtooltip Tricks of the Trade
+/run if IsShiftKeyDown() and not InCombatLockdown() then SetTotTMacro() end
+/cast [@name] Tricks of the Trade
+]]
+local MACRONAME = "TotT"
+function _G.SetTotTMacro()
+	local macrotext = GetMacroBody(MACRONAME)
+	local name = UnitName("target")
+	if (macrotext) and name then
+		EditMacro(MACRONAME	, nil, "INV_Misc_QuestionMark", string.gsub(macrotext, "%@(.-)%]", "@"..name.."]"))
+	end
+end

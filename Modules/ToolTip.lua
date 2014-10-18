@@ -3,20 +3,16 @@ local cfg = ns.Config
 local playerGUID
 local ShowIDs = false
 
-if false then return end
-
 local 	GetTime, UnitName, UnitLevel, UnitExists, UnitIsDeadOrGhost, UnitFactionGroup =
-		_G.GetTime, _G.UnitName, _G.UnitLevel, _G.UnitExists, _G.UnitIsDeadOrGhost, _G.UnitFactionGroup
+		GetTime, UnitName, UnitLevel, UnitExists, UnitIsDeadOrGhost, UnitFactionGroup
 local   UnitIsPlayer, GetMouseFocus, GetInventoryItemLink, GetInventorySlotInfo, GetItemInfo =
-		_G.UnitIsPlayer, _G.GetMouseFocus, _G.GetInventoryItemLink, _G.GetInventorySlotInfo, _G.GetItemInfo
+		UnitIsPlayer, GetMouseFocus, GetInventoryItemLink, GetInventorySlotInfo, GetItemInfo
 local 	UnitClass, UnitIsTapped, UnitIsTappedByPlayer, UnitReaction, IsShiftKeyDown= 
-		_G.UnitClass, _G.UnitIsTapped, _G.UnitIsTappedByPlayer, _G.UnitReaction, _G.IsShiftKeyDown
-local   GetSpecialization, GetInspectSpecialization, GetSpecializationRoleByID, GetSpecializationInfoByID, GetSpecializationInfo = 
-		_G.GetSpecialization, _G.GetInspectSpecialization, _G.GetSpecializationRoleByID, _G.GetSpecializationInfoByID, _G.GetSpecializationInfo
-		
-
-local 	find, 		 format, 		select, _G , floor,  unpack =
-		string.find, string.format, select, _G, _G.floor, _G.unpack
+		UnitClass, UnitIsTapped, UnitIsTappedByPlayer, UnitReaction, IsShiftKeyDown
+local   GetInspectSpecialization, GetSpecializationRoleByID, GetSpecializationInfoByID, GetSpecializationInfo = 
+		GetInspectSpecialization, GetSpecializationRoleByID, GetSpecializationInfoByID, GetSpecializationInfo
+local 	find, format, select, _G, floor, unpack =
+		find, format, select, _G, floor, unpack
 
 local roleicons = {
 	TANK = '|TInterface\\LFGFrame\\UI-LFG-ICON-PORTRAITROLES.blp:13:13:0:0:64:64:0:19:22:41|t',
@@ -38,50 +34,6 @@ local InvSlotNames = {
 		'Wrist','Hands','Waist','Legs','Feet','Finger0',
 		'Finger1','Trinket0','Trinket1','MainHand','SecondaryHand',
 }
-local UpgradeILvlMap = {
-	['0'] = 0,['1'] = 4,['373'] = 4,['374'] = 8,['375'] = 4,['376'] = 8,['377'] = 12,
-	['379'] = 4,['380'] = 8,['445'] = 0,['446'] = 4,['447'] = 8,['451'] = 0,['452'] = 4,
-	['453'] = 0,['454'] = 4,['455'] = 8,['456'] = 0,['457'] = 4,['458'] = 0,['459'] = 4,
-	['460'] = 8,['461'] = 12,['462'] = 16,['465'] = 0,['466'] = 4,['467'] = 8,['468'] = 0,
-	['469'] = 4,['470'] = 8,['471'] = 12,['472'] = 16,['476'] = 0,['491'] = 0,['492'] = 4,['493'] = 8,
-	['494'] = 0,['495'] = 4,['496'] = 8,['497'] = 12,['498'] = 16,['504'] = 12,['505'] = 16,
-	['506'] = 20,['507'] = 24,
-}
---[=================================================[
--- saving for later, to find item upgrade ids
-
-local t = tip or CreateFrame("GameTooltip", "tip", UIParent, "GameTooltipTemplate")
-t:SetOwner(UIParent, "ANCHOR_TOPLEFT")
-local link = "|cffa335ee|Hitem:99161:0:0:4618:0:0:0:0:90:0:504|h[Chronomancer Hood]|h|r"
-t:SetHyperlink(link)
-t:Show()
-ChatFrame3:Clear()
-
-local i = 0
-t.elapsed = 0
-t:SetScript("OnUpdate", function(self, elapsed)
-      self.elapsed = self.elapsed + elapsed
-      if self.elapsed > .1 then
-         if i % 100 == 0 then print (i) end
-         local link = "|cffa335ee|Hitem:99161:0:0:4618:0:0:0:0:90:0:"..i.."|h[Chronomancer Hood]|h|r"
-         
-         self:ClearLines()
-         self:SetHyperlink(link)
-         
-         for k = 2, self:NumLines() do
-            local text = _G["tipTextLeft"..k]:GetText()
-            if text and text ~= "" then
-               local up = strmatch(text, "^" .. gsub(ITEM_UPGRADE_TOOLTIP_FORMAT, "%%d", "(%%d+)"))
-               if up then
-                  ChatFrame3:AddMessage("['"..i.."'] = " .. (up * 4) ..",")
-               end
-            end
-         end
-         i = i + 1
-         self.elapsed = 0
-      end
-end)
---]=================================================]
 
 local Tooltips = {
 	GameTooltip,
@@ -102,7 +54,8 @@ local Tooltips = {
 	DropDownList1MenuBackdrop,
 	DropDownList2MenuBackdrop,
 	DropDownList3MenuBackdrop,
-	BNToastFrame
+	BNToastFrame,
+	SmallTextTooltip,
 }
 
 local NIL_COLOR = 	 { r = 1,  g = 1,  b = 1 }
@@ -160,7 +113,7 @@ end
 local function FindLine(self, text, offset)
 	offset = offset or 2
 	for i=offset, self:NumLines() do
-		local tipText = _G["GameTooltipTextLeft"..i]
+		local tipText = _G[self:GetName().."TextLeft"..i]
 		if(tipText:GetText() and tipText:GetText():find(text)) then
 			return tipText
 		end
@@ -185,18 +138,21 @@ local function GetGameTooltipUnit(self)
 end
 
 --  [[  Inspect Stuff  ]] --
-local function GetItemUpgrade(link)
-	if not link then return 0; end
+local ilvlTip = CreateFrame("GameTooltip", "ItemlevelTooptip", UIParent, "GameTooltipTemplate")
+ilvlTip:SetOwner(UIParent, "ANCHOR_NONE")
 
-	local upgrade = link:match(":(%d+)\124h%[")
-	if upgrade then
-		if not UpgradeILvlMap[upgrade] then
-			ns.Print("Unknown Item Upgrade code: " .. upgrade .. ". Item: " .. link)
-			return 0;
-		end
-		return UpgradeILvlMap[upgrade]
+local function GetItemLevelFromLink(link)
+	ilvlTip:SetOwner(UIParent, "ANCHOR_NONE")
+	ilvlTip:SetHyperlink(link)
+	ilvlTip:Show()
+
+	local line = FindLine(ilvlTip, "Item Level (%d+)")
+	local iLvl
+	if line then
+		iLvl = line:GetText():match("Item Level (%d+)")
 	end
-	return 0;
+	ilvlTip:Hide()
+	return iLvl or 0
 end
 
 local ipairs = _G.ipairs
@@ -205,9 +161,8 @@ local function GetItemLevel(unit)
 	for i, v in ipairs(InvSlotNames) do
 		local link = GetInventoryItemLink(unit, GetInventorySlotInfo(v..'Slot'))
 		if link ~= nil then
-			local _, _, _, ilvl = GetItemInfo(link)
 			numItems = numItems + 1
-			totlvl = totlvl + ilvl + (GetItemUpgrade(link) or 0)
+			totlvl = totlvl + (GetItemLevelFromLink(link) or 0)
 		end
 	end
 	if numItems > 5 and numItems < 17 and totlvl > 1 then
@@ -310,6 +265,10 @@ local function GetInspectInfo(self, unit, level, needIlvl, specIcon, iLvl)
 end
 
 --  [[  Apply The Tooltip Style  ]]  --
+local function UpdateTip(self)
+	self:SetBackdropColor(0, 0, 0, .7)
+end
+
 local function SetTooltipStyle(self)
 	if not self then return; end
 
@@ -333,7 +292,8 @@ local function SetTooltipStyle(self)
 						insets = {left = bgSize, right = bgSize, top = bgSize, bottom = bgSize}};
 	self:SetBackdrop(backdrop)
 
-	self:HookScript("OnShow", function(self) self:SetBackdropColor(0, 0, 0, .7) end)
+	self:HookScript("OnShow", UpdateTip)
+	self:HookScript("OnHide", UpdateTip)
 	ns.CreateBorder(self, borderSize, 0)
 	self:SetBorderColor(unpack(cfg.Colors.Border))
 end
@@ -341,8 +301,8 @@ end
 local function GameTooltip_OnTooltipSetUnit(self)
 	local unit = GetGameTooltipUnit(self)
 	if (not unit) then return; end
-
 	HideLines(self)
+	self:SetBackdropColor(0, 0, 0, .7)
 
 	local level = UnitLevel(unit)
 	local isShiftKeyDown = IsShiftKeyDown()
@@ -567,7 +527,7 @@ local function GameTooltip_OnTooltipSetSpell(self)
 end
 
 local function SetItemRef(link, text, button, chatFrame)
-	if find(link,"^spell:") and ShowIDs then
+	if ShowIDs and link:find("^spell:") then
 		local id = string.sub(link,7)
 		ItemRefTooltip:AddLine(("|cFFCA3C3C%s|r %d"):format(ID, id))
 		ItemRefTooltip:Show()
@@ -621,7 +581,7 @@ local function LoadTooltips(event, name)
 	end)
 	hooksecurefunc(ShoppingTooltip1, "SetPoint", FixShoppingPosition)
 	hooksecurefunc(ShoppingTooltip2, "SetPoint", FixShoppingPosition)
-	hooksecurefunc(ShoppingTooltip3, "SetPoint", FixShoppingPosition)
+	--hooksecurefunc(ShoppingTooltip3, "SetPoint", FixShoppingPosition)
 
 	-- Spell / ItemID
 	SlashCmdList.SPELLID = function(msg)
