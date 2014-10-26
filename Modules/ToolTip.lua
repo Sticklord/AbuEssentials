@@ -46,7 +46,7 @@ local Tooltips = {
 	ConsolidatedBuffsTooltip,
 	ShoppingTooltip1,
 	ShoppingTooltip2,
-	ShoppingTooltip3,
+	--ShoppingTooltip3, removed
 	WorldMapTooltip,
 	WorldMapCompareTooltip1,
 	WorldMapCompareTooltip2,
@@ -487,7 +487,7 @@ end
 -- Showing ID's
 local function SetUnitAura(self, unit, index, filter)
 	local _, _, _, _, _, _, _, caster, _, _, id = UnitAura(unit, index, filter)
-	if(ShowIDs and spellID) then
+	if(ShowIDs and id) then
 		if caster then
 			local name = UnitName(caster)
 			local _, class = UnitClass(caster)

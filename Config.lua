@@ -77,7 +77,7 @@ Abu.Config = {
 		['PRIEST']  = '[help]2;[mod:alt]2;1',
 		['PALADIN'] = '[help]2;[mod:alt]2;1',
 		['SHAMAN']  = '[help]2;[mod:alt]2;1',
-		['DRUID']   = '[help,nostance:1/2/3/4]2;[mod:alt]2;[stealth]10;[stance:3]7;[stance:1]9;',
+		['DRUID']   = '[help,nostance:1/2/3/4]2;[mod:alt]2;[stance:2]7;[stance:1]9;',
 		--['ROGUE']   = '[stance:1]7;[stance:3]7;1',
 	},
 	Chat = {

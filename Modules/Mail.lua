@@ -10,7 +10,11 @@ local MAX_LOOPS = 10
 local onlyCash, origInboxFrame_OnClick
 
 local Mail = CreateFrame('Frame', "AbuMail", UIParent)
-local button 
+local button
+
+local bacon = {
+	["The Postmaster"] = true,
+}
 
 local function breathe(self, elapsed)
 	self.ticker = self.ticker + elapsed
@@ -34,12 +38,19 @@ end
 function Mail:ProcessMail()
 	if not InboxFrame:IsVisible() then return self:StopMail() end
 
-	local _, _, _, _, money, CODAmount, _, numItems = GetInboxHeaderInfo(self.index)
+	local _, _, sender, subject, money, CODAmount, _, numItems, wasRead, wasReturned, textCreated, canReply, isGM = GetInboxHeaderInfo(self.index)
 	numItems = (not numItems) and 0 or numItems
+	money = (not money) and 0 or money
 
-	if (money < 1) and (onlyCash or numItems == 0) or (CODAmount > 0) then
+	if (money <= 0) and (onlyCash or numItems == 0) or (CODAmount > 0) then
+		if (money <= 0) and (numItems <= 0) and bacon[sender] then
+			DeleteInboxItem(self.index)
+			self.delay = LOOTDELAY
+			return
+		end
+
 		self.index = self.index - 1
-		_, _, _, _, money, CODAmount, _, numItems = GetInboxHeaderInfo(self.index)
+		_, _, sender, subject, money, CODAmount, _, numItems, wasRead, wasReturned, textCreated, canReply, isGM = GetInboxHeaderInfo(self.index)
 		numItems = (not numItems) and 0 or numItems
 	end
 

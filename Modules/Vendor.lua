@@ -6,21 +6,20 @@ local function buildBuyList()
 	local playerClass = select(2, UnitClass('player'))
 	local playerLevel = UnitLevel('player')	
 	local prof1, prof2 = GetProfessions()
-	local profs = {prof1, prof2}
 
 	list["Pandaren Treasure Noodle Soup"] = 5
 	list["Deluxe Noodle Soup"] = 5
 	list["Noodle Soup"] = 5
 	-- Item Name = amount to uphold
 	if (playerLevel > 85) then
-		list["Tome of the Clear Mind"] = 40
+		list["Tome of the Clear Mind"] = 20
 	elseif (playerLevel > 80) then
 		list["Dust of Disappearance"] = 20
 	elseif (playerLevel <= 80) then
 		list["Vanishing Powder"] = 20
 	end
 
-	for _,prof in ipairs(profs) do
+	for _,prof in ipairs({prof1, prof2}) do
 		local profName = GetProfessionInfo(prof)
 		if profName == "Engineering" then
 			list["Tinker's Kit"] = 20

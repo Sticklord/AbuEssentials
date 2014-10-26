@@ -1,7 +1,7 @@
-local AddonName, Abu = ...
+local AddonName, ns = ...
 
 --  [[ Change DameFont ]] --
-_G.DAMAGE_TEXT_FONT = Abu.Config.Fonts.Damage
+_G.DAMAGE_TEXT_FONT = ns.Config.Fonts.Damage
 
 --  [[ Map Edit 	]] --
 WorldMapFrame:SetScript("OnMouseWheel", function(self, delta)
@@ -52,31 +52,21 @@ local function HideFishTip()
 		end
 	end)
 end
-Abu.RegisterEvent("PLAYER_LOGIN", HideFishTip)
+ns.RegisterEvent("PLAYER_LOGIN", HideFishTip)
 
 --	[[	Move Loots 	]] --
 do
-	local originals = {}
-	local hooked = {}
-
-	local alerts = LOOT_WON_ALERT_FRAMES
-
-	local function Hook(frame)
-		originals[frame] = frame:GetScript("OnShow")
-		frame:HookScript("OnShow", frame.Hide)
-		frame:Hide()
-		hooked[frame] = true
-	end
-
+	local alerts = _G.LOOT_WON_ALERT_FRAMES
 	local function LootWonAlertFrame_ShowAlert_Hook(itemLink, quantity, rollType, roll)
 		for i = 1, #alerts do
 			local frame = alerts[i]
-			if not hooked[frame] then
-				Hook(frame)
+			if not frame.UraltUndSenilLahmAufMichZuKroch then
+				frame:HookScript("OnShow", frame.Hide)
+				frame:Hide()
+				frame.UraltUndSenilLahmAufMichZuKroch = true
 			end
 		end
 	end
-
 	hooksecurefunc("LootWonAlertFrame_ShowAlert", LootWonAlertFrame_ShowAlert_Hook)
 end
 
@@ -85,10 +75,40 @@ local function ChangeRaidSliders()
 	if not IsAddOnLoaded('Blizzard_CompactUnitFrameProfiles') then
 		LoadAddOn("Blizzard_CompactUnitFrameProfiles")
 	end
-	local h = _G["CompactUnitFrameProfilesGeneralOptionsFrameHeightSlider"]
-	local w = _G["CompactUnitFrameProfilesGeneralOptionsFrameWidthSlider"] 
-	h:SetMinMaxValues(1,150) 
-	w:SetMinMaxValues(1,150)
+	CompactUnitFrameProfilesGeneralOptionsFrameHeightSlider:SetMinMaxValues(1,150) 
+	CompactUnitFrameProfilesGeneralOptionsFrameWidthSlider:SetMinMaxValues(1,150)
 end
 
-Abu.RegisterEvent("PLAYER_LOGIN", ChangeRaidSliders)
+ns.RegisterEvent("PLAYER_LOGIN", ChangeRaidSliders)
+
+-- [[ Change LFD to holiday ]]
+LFDParentFrame:HookScript("OnShow", function()
+	for i = 1, GetNumRandomDungeons() do
+		local id, name = GetLFGRandomDungeonInfo(i)
+		if(select(15,GetLFGDungeonInfo(id))) and (not GetLFGDungeonRewards(id)) then
+			LFDQueueFrame_SetType(id)
+		end
+	end
+end)
+
+---------------------------------------------------------------------------
+-- 						TekKrush  Credits to Tek						 --
+---------------------------------------------------------------------------
+
+local function tekKrush(event, id, rollType)
+	for i=1,STATICPOPUP_NUMDIALOGS do
+		local frame = _G["StaticPopup"..i]
+		if frame.which == "CONFIRM_LOOT_ROLL" and frame.data == id 
+			and frame.data2 == rollType and frame:IsVisible() 
+		then
+			StaticPopup_OnClick(frame, 1) 
+		end
+	end
+end
+ns.RegisterEvent("CONFIRM_DISENCHANT_ROLL", tekKrush)
+
+StaticPopupDialogs["LOOT_BIND"].OnCancel = function(self, slot)
+	if GetNumGroupMembers() == 0 then 
+		ConfirmLootSlot(slot) 
+	end
+end

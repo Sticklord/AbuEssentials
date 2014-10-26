@@ -72,33 +72,11 @@ SlashCmdList.ITEMID = function(msg)
 end
 
 function ns.Print(...)
+	if (not ...) then return; end
 	local s = ""
 	local t = {...}
-	if (not ...) then return; end
 	for i = 1, #t do
 		s = s .. " " .. t[i]
 	end
 	return print("|cffffcf00Abu:|r"..s)
-end
-
----------------------------------------------------------------------------
--- 						TekKrush  Creditss to Tek						 --
----------------------------------------------------------------------------
-
-local function tekKrush(event, id, rollType)
-	for i=1,STATICPOPUP_NUMDIALOGS do
-		local frame = _G["StaticPopup"..i]
-		if frame.which == "CONFIRM_LOOT_ROLL" and frame.data == id 
-			and frame.data2 == rollType and frame:IsVisible() 
-		then
-			StaticPopup_OnClick(frame, 1) 
-		end
-	end
-end
-ns.RegisterEvent("CONFIRM_DISENCHANT_ROLL", tekKrush)
-
-StaticPopupDialogs["LOOT_BIND"].OnCancel = function(self, slot)
-	if GetNumGroupMembers() == 0 then 
-		ConfirmLootSlot(slot) 
-	end
 end
