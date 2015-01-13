@@ -50,9 +50,9 @@ local function UpdateMacros(event, ...)
 	end
 end
 
-ns.RegisterEvent("PLAYER_ENTERING_WORLD", UpdateMacros)
-ns.RegisterEvent("PLAYER_TALENT_UPDATE", UpdateMacros)
-ns.RegisterEvent("ACTIVE_TALENT_GROUP_CHANGED", UpdateMacros)
+ns:RegisterEvent("PLAYER_ENTERING_WORLD", UpdateMacros)
+ns:RegisterEvent("PLAYER_TALENT_UPDATE", UpdateMacros)
+ns:RegisterEvent("ACTIVE_TALENT_GROUP_CHANGED", UpdateMacros)
 
 --[[macro: TotT
 #showtooltip Tricks of the Trade

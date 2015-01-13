@@ -1,10 +1,8 @@
 local AddonName, ns = ...
 
 local function SkinAddOns(event, addon)
-    if (IsAddOnLoaded('Omen')) then
-        if (not OmenBarList.borderTextures) then
-            ns.CreateBorder(OmenBarList, 11, 4)
-        end
+    if (IsAddOnLoaded('Omen')) and not(OmenBarList.borderTextures) then
+        ns.CreateBorder(OmenBarList, 11, 4)
     end
 
     if (IsAddOnLoaded('Skada')) then
@@ -29,6 +27,12 @@ local function SkinAddOns(event, addon)
             SkadaBarWindowSkada:SetBackdropColor(0, 0, 0, .3)
         end
     end
+
+    if (IsAddOnLoaded("ShieldMaid")) and (not ShieldMaidShieldBarrierIcon.borderTextures) then
+        local i1, i2 = ShieldMaidShieldBarrierIcon, ShieldMaidShieldBlockIcon
+        ns.CreateBorder(i1, 16, 4)
+        ns.CreateBorder(i2, 16, 4)
+    end
 end
 
-ns.RegisterEvent("PLAYER_ENTERING_WORLD", SkinAddOns)
+ns:RegisterEvent("PLAYER_ENTERING_WORLD", SkinAddOns)

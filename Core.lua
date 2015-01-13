@@ -1,50 +1,12 @@
-local AddonName, ns = ...
-_G.ABUADDONS = ns
+local name, ns = ...
 
----------------------------------------------------------------------------
---							Event Handler								 --
----------------------------------------------------------------------------
-local eventframe = CreateFrame("Frame")
-eventframe:SetScript("OnEvent", function(self, event, ...)
-	if self[event] then
-		for _, func in pairs(self[event]) do
-			func(event, ...)
-		end
-	end
-end)
-
-function ns.RegisterEvent(event, func)
-	assert(type(event) == "string")
-	if not eventframe[event] then
-		eventframe[event] = {}
-	end
-	table.insert(eventframe[event], func)
-	return eventframe:RegisterEvent(event)
-end
-function ns.UnregisterEvent(event, func) -- Need to check if this works
-	if not eventframe[event] then return; end
-	if func and eventframe[event][func]  then
-		eventframe[event][func] = nil
-	end
-	if #eventframe[event] == 0 then
-		eventframe:UnregisterEvent(event)
-	end
-end
-
-local function Load(event, ...)
-	if ... ~= AddonName then return end
-	if not AbuEssentialsSavedVars then
-		_G.AbuEssentialsSavedVars = { };
-	end
-	ShowAccountAchievements(true);
-end
-ns.RegisterEvent('ADDON_LOADED', Load)
-
-local function Unload(e)
-	_G.ABUADDONS = nil;
-end
-ns.RegisterEvent("PLAYER_ENTERING_WORLD", Unload)
-
+_G['AbuGlobal'] = {
+	GlobalConfig = ns.GlobalConfig,
+	SetupFrameForSliding = ns.SetupFrameForSliding,
+	UIFrameFadeIn = ns.UIFrameFadeIn,
+	UIFrameFadeOut = ns.UIFrameFadeOut,
+	CreateBorder = ns.CreateBorder,
+}
 ---------------------------------------------------------------------------
 --								COMMANDS								 --
 ---------------------------------------------------------------------------
@@ -70,13 +32,41 @@ SlashCmdList.ITEMID = function(msg)
 		ChatFrame1:AddMessage(msg .. " has item ID: " .. link:match("item:(%d+):")) 
 	end 
 end
-
-function ns.Print(...)
-	if (not ...) then return; end
-	local s = ""
-	local t = {...}
-	for i = 1, #t do
-		s = s .. " " .. t[i]
+----------------------------------------
+--Antiafk hihihi
+local function UnAfk()
+	local button = _G[StaticPopup_Visible("CAMP").."Button1"]
+	if button then
+		button:Click()
 	end
-	return print("|cffffcf00Abu:|r"..s)
+end
+
+_G.SLASH_UNAFK1 = '/uafk'
+local isUnAfk = false
+SlashCmdList.UNAFK = function(msg)
+	if (not isUnAfk) then
+		ns:RegisterEvent("PLAYER_CAMPING", UnAfk)
+		ns:Print("Anti AFK Mode: ON")
+	else
+		ns:UnregisterEvent("PLAYER_CAMPING", UnAfk)
+		ns:Print("Anti AFK Mode: OFF")
+	end
+	isUnAfk = not isUnAfk
+end
+
+-----------------------------------
+-- add delay to macros
+_G.SLASH_IN1 = "/in"
+_G.SLASH_IN2 = "/timer"
+
+local box = _G.MacroEditBox
+
+SlashCmdList.IN = function(input)
+	local time, cmd = input:match'^([^%s]+)%s+(.*)$'
+	time = tonumber(time)
+	if (not time) or (not cmd) then return; end
+
+	C_Timer.After(math.max(time, 0.01), function()
+		box:GetScript("OnEvent")(box, "EXECUTE_CHAT_LINE", cmd)
+	end)
 end

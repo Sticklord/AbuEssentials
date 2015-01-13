@@ -3,10 +3,11 @@
 			Adds a open all button in the mail
 			and prints total cash recieved
 --]======================================================]
-local AddonName, ns = ...
+local _, ns = ...
+if (not ns.Config.EnableMailModule) then return; end
 
-local LOOTDELAY = 0.5
-local MAX_LOOPS = 10
+local LOOTDELAY = 0.6
+local MAX_LOOPS = 5
 local onlyCash, origInboxFrame_OnClick
 
 local Mail = CreateFrame('Frame', "AbuMail", UIParent)
@@ -35,6 +36,7 @@ local function checkBagSize()
 	return totalFree
 end
 
+local sameIndexCount, lastIndex = 0, 0
 function Mail:ProcessMail()
 	if not InboxFrame:IsVisible() then return self:StopMail() end
 
@@ -52,8 +54,10 @@ function Mail:ProcessMail()
 		self.index = self.index - 1
 		_, _, sender, subject, money, CODAmount, _, numItems, wasRead, wasReturned, textCreated, canReply, isGM = GetInboxHeaderInfo(self.index)
 		numItems = (not numItems) and 0 or numItems
+	elseif (sameIndexCount > MAX_LOOPS) then
+		self.index = self.index - 1
+		sameIndexCount = 0
 	end
-
 	if self.index <= 0 then 
 		return self:StopMail() 
 	end
@@ -66,9 +70,17 @@ function Mail:ProcessMail()
 			self.lastMoneyLooted = self.index
 		end
 	elseif (not onlyCash) and (numItems > 0) and (CODAmount <= 0) and (checkBagSize() > 0) then
-		TakeInboxItem(self.index)
+
+		AutoLootMailItem(self.index)
 		self.delay = LOOTDELAY
 	end
+
+	if ( self.index == lastIndex ) then
+		sameIndexCount = sameIndexCount + 1
+	else
+		sameIndexCount = 0
+	end
+	lastIndex = self.index
 end
 
 function Mail:StopMail(msg)
@@ -79,12 +91,17 @@ function Mail:StopMail(msg)
 		_G.InboxFrame_OnClick = origInboxFrame_OnClick
 	end
 	if msg then
-		ns.Print(msg)
+		ns:Print(msg)
 	end
 	if self.cashCount > 0 then
-		ns.Print('Earned '..GetCoinTextureString(self.cashCount)..' from mailbox.')
+		ns:Print('Earned '..GetCoinTextureString(self.cashCount)..' from mailbox.')
 		self.cashCount = 0
 	end
+	local _, totalLeft = GetInboxNumItems()
+	if (totalLeft == 0) then
+		MiniMapMailFrame:Hide()
+	end
+
 	button:Enable()
 end
 
@@ -115,8 +132,7 @@ function Mail:UI_ERROR_MESSAGE(event, arg1)
 end
 
 local function Load(event, ...)
-	local self = Mail
-	self.cashCount = 0
+	Mail.cashCount = 0
 
 	if not button then -- Create Grab All Button
 		button = CreateFrame("Button", "AbuMail", InboxFrame, "UIPanelButtonTemplate")
@@ -129,20 +145,22 @@ local function Load(event, ...)
 			if key ~= "LSHIFT" then return; end
 			if state == 1 then
 				self:SetText("Take Money")
+				self.takeMoney = true
 			else
 				self:SetText("Open All")
+				self.takeMoney = false
 			end
 		end)
 
-		button:SetScript("OnClick", function() Mail:GetMail(IsShiftKeyDown()) end)
+		button:SetScript("OnClick", function(self) Mail:GetMail(self.takeMoney) end)
 		button:SetFrameLevel(button:GetFrameLevel() + 1)
 	end
 
-	self:SetScript("OnEvent", function(self, event, ...) 
+	Mail:SetScript("OnEvent", function(self, event, ...) 
 		if self[event] then 
 			return self[event](self, event, ...) 
 		end 
 	end)
 end
 
-ns.RegisterEvent("PLAYER_LOGIN", Load)
+ns:RegisterEvent("PLAYER_LOGIN", Load)

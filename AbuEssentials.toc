@@ -4,22 +4,23 @@
 ## SavedVariablesPerCharacter: AbuEssentialsSavedVars
 ## X-Credits: Mumin, for the name.
 
+libs\AbuTheLib.lua
+
 Tools\animations.lua
 Tools\api.lua
 
-Config.lua
+CONFIG.lua
 Core.lua
 Scripts.lua
 Setup.lua
 
-Modules\Buffs.lua
 Modules\Mail.lua
+Modules\sendstuff.lua
 Modules\TalentMacro.lua
 Modules\ToolTip.lua
 Modules\Vendor.lua
 
 Skins\AddOns.lua
-Skins\EndCaps.lua
 Skins\MiniMap.lua
 Skins\Recolor.lua
 Skins\SpeechBubbles.lua

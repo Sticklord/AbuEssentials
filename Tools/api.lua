@@ -173,14 +173,3 @@ function ns.CreateBorder(self, size, padding, layer)
 		self:SetBorderPadding(padding or 3)
 	end
 end
-
-
-function ns.Kill(object)
-	if object.UnregisterAllEvents then
-		object:UnregisterAllEvents()
-	else
-		object.Show = object.Hide
-	end
-	
-	object:Hide()
-end

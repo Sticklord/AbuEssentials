@@ -1,3 +1,7 @@
+local _, ns = ...
+
+if (not ns.Config.SkinMinimap) then return; end
+
 -- Hiding Crap
 MinimapCluster:SetScale(1.0)
 MinimapCluster:SetPoint("TOPRIGHT", "UIParent", "TOPRIGHT", -5, 5)

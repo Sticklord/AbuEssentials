@@ -3,7 +3,7 @@
 	------------------------------------------------------------
 local AddonName, ns = ...
 
-local color = ns.Config.Colors.Frame
+local color = ns.GlobalConfig.Colors.Frame
 
 local frames = {
 	"CompactRaidGroup1BorderFrame",
@@ -104,7 +104,7 @@ local function Paint(obj)
 	obj:SetVertexColor(unpack(color))
 end
 
-ns.RegisterEvent("ADDON_LOADED", function(event, name)
+ns:RegisterEvent("ADDON_LOADED", function(event, name)
 	if name ~= AddonName then return end
 
 	if not IsAddOnLoaded("Blizzard_TimeManager") then

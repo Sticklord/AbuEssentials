@@ -1,7 +1,9 @@
 local AddonName, ns = ...
-local select = select
-local pairs = pairs
-local GetCVarBool = GetCVarBool
+
+if (not ns.Config.PopBubbles) then return; end
+
+local 	select, pairs, GetCVarBool = 
+		select, pairs, GetCVarBool
 
 local function isBubble(frame)
 	if frame:GetName() then return end
@@ -38,17 +40,17 @@ local function hookBubbles(...)
 	end
 end
 
-local events = {
-	CHAT_MSG_SAY = "chatBubbles", 
-	CHAT_MSG_YELL = "chatBubbles",
-	CHAT_MSG_PARTY = "chatBubblesParty", 
-	CHAT_MSG_PARTY_LEADER = "chatBubblesParty",
-	CHAT_MSG_MONSTER_SAY = "chatBubbles", 
-	CHAT_MSG_MONSTER_YELL = "chatBubbles", 
-	CHAT_MSG_MONSTER_PARTY = "chatBubblesParty",
-}
+do
+	local events = {
+		CHAT_MSG_SAY = "chatBubbles", 
+		CHAT_MSG_YELL = "chatBubbles",
+		CHAT_MSG_PARTY = "chatBubblesParty", 
+		CHAT_MSG_PARTY_LEADER = "chatBubblesParty",
+		CHAT_MSG_MONSTER_SAY = "chatBubbles", 
+		CHAT_MSG_MONSTER_YELL = "chatBubbles", 
+		CHAT_MSG_MONSTER_PARTY = "chatBubblesParty",
+	}
 
-local function LoadBubbles()
 	local numChildren = -1
 	local WorldFrame = WorldFrame
 	local f = CreateFrame('Frame')
@@ -78,5 +80,3 @@ local function LoadBubbles()
 		hookBubbles(WorldFrame:GetChildren())
 	end)
 end
-
-ns.RegisterEvent('PLAYER_LOGIN', LoadBubbles)

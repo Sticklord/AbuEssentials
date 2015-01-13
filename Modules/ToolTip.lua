@@ -1,5 +1,10 @@
-local AddonName, ns = ...
+local name, ns = ...
+
 local cfg = ns.Config
+if (not cfg.Tooltip.Enable) then return; end
+
+local cfgGlobal = ns.GlobalConfig
+
 local playerGUID
 local ShowIDs = false
 
@@ -46,7 +51,6 @@ local Tooltips = {
 	ConsolidatedBuffsTooltip,
 	ShoppingTooltip1,
 	ShoppingTooltip2,
-	--ShoppingTooltip3, removed
 	WorldMapTooltip,
 	WorldMapCompareTooltip1,
 	WorldMapCompareTooltip2,
@@ -58,8 +62,10 @@ local Tooltips = {
 	SmallTextTooltip,
 }
 
-local NIL_COLOR = 	 { r = 1,  g = 1,  b = 1 }
-local TAPPED_COLOR = { r = 0.6,g = 0.6,b = 0.6 }
+local COLORS = {
+	NIL = 	 { r = 1,  g = 1,  b = 1 },
+	TAPPED = { r = 0.6,g = 0.6,b = 0.6 },
+}
 
 -- Get the Unit Color
 local function GetUnitColor( unit )
@@ -70,7 +76,7 @@ local function GetUnitColor( unit )
 		local _, class = UnitClass(unit)
 		color = _G.RAID_CLASS_COLORS[class]
 	elseif (UnitIsTapped(unit) and not UnitIsTappedByPlayer(unit)) then
-		color = TAPPED_COLOR
+		color = COLORS.TAPPED
 	else
 		local reaction = UnitReaction(unit, "player")
 		if (reaction) then
@@ -78,7 +84,7 @@ local function GetUnitColor( unit )
 		end
 	end
 	if (not color) then
-		color = NIL_COLOR
+		color = COLORS.NIL
 	end
 	return color, color.r, color.g, color.b
 end
@@ -91,21 +97,6 @@ local function GetFormattedValue(val)
 		return ("%.0fk"):format(val / 1e3)
 	else
 		return ("%d"):format(val)
-	end
-end
-
--- Hide Useless Lines
-local function HideLines(self)
-	for i = 3, self:NumLines() do
-		local tiptext = _G["GameTooltipTextLeft"..i]
-		local linetext = tiptext:GetText()
-
-		if (linetext) then
-			if (linetext:find(_G.PVP)) or (linetext:find(_G.FACTION_ALLIANCE)) or (linetext:find(_G.FACTION_HORDE)) then
-				tiptext:SetText(nil)
-				tiptext:Hide()
-			end
-		end
 	end
 end
 
@@ -137,136 +128,10 @@ local function GetGameTooltipUnit(self)
 	return unit
 end
 
---  [[  Inspect Stuff  ]] --
-local ilvlTip = CreateFrame("GameTooltip", "ItemlevelTooptip", UIParent, "GameTooltipTemplate")
-ilvlTip:SetOwner(UIParent, "ANCHOR_NONE")
-
-local function GetItemLevelFromLink(link)
-	ilvlTip:SetOwner(UIParent, "ANCHOR_NONE")
-	ilvlTip:SetHyperlink(link)
-	ilvlTip:Show()
-
-	local line = FindLine(ilvlTip, "Item Level (%d+)")
-	local iLvl
-	if line then
-		iLvl = line:GetText():match("Item Level (%d+)")
-	end
-	ilvlTip:Hide()
-	return iLvl or 0
-end
-
-local ipairs = _G.ipairs
-local function GetItemLevel(unit)
-	local totlvl, numItems = 0, 0
-	for i, v in ipairs(InvSlotNames) do
-		local link = GetInventoryItemLink(unit, GetInventorySlotInfo(v..'Slot'))
-		if link ~= nil then
-			numItems = numItems + 1
-			totlvl = totlvl + (GetItemLevelFromLink(link) or 0)
-		end
-	end
-	if numItems > 5 and numItems < 17 and totlvl > 1 then
-		return floor(totlvl/numItems + .5)
-	end
-	return false
-end
--- Get spec Icon 
-local function GetSpecIcon(unit, isPlayer)
-	local spec
-	if(isPlayer) then
-		spec = GetSpecialization()
-	else
-		spec = GetInspectSpecialization(unit)
-	end
-	if(spec ~= nil and spec > 0) then
-		if (not isPlayer) then 
-			local role = GetSpecializationRoleByID(spec);
-			if(role ~= nil) then
-				local _, _, _, icon = GetSpecializationInfoByID(spec);
-				return icon
-			end
-		else
-			local _, _, _, icon = GetSpecializationInfo(spec)
-			return icon
-		end
-	end
-end
-
--- OnEvent
-local function GameTooltip_OnEvent(self, event, ...)
-	local unit = "mouseover"
-	if event == "MODIFIER_STATE_CHANGED" then
-		if((... == "LSHIFT" or ... == "RSHIFT") and UnitExists(unit)) then
-			self:SetUnit(unit)
-		end
-	elseif event == "INSPECT_READY" then
-		local GUID = ...
-		if (self.requestedGUID ~= GUID) or (_G.InspectFrame and _G.InspectFrame:IsShown()) then 
-			return
-		end
-
-		if (UnitExists(unit)) then 
-			local cache = self.inspectCache
-
-			-- Fetch data while we got inspect
-			local iLvl = GetItemLevel(unit)
-			local specIcon = GetSpecIcon(unit)
-			local now = floor(GetTime())
-
-			cache[GUID] = {lastUpdate = now}
-			if specIcon then
-				cache[GUID].specIcon = specIcon
-			end
-			if iLvl then
-				cache[GUID].iLvl = iLvl
-			end
-
-			-- Update tooltip
-			self:SetUnit(unit)
-		end
-		self:UnregisterEvent(event)
-	end
-end
-
--- Getting the inspect Info, sometimes
-local function GetInspectInfo(self, unit, level, needIlvl, specIcon, iLvl)
-	if (not CanInspect(unit)) then return; end
-
-	local GUID = UnitGUID(unit)
-
-	if (GUID == playerGUID) then
-		specIcon = GetSpecIcon(unit, true)
-		local _, iLvl = GetAverageItemLevel()
-		return specIcon, floor(iLvl)
-	end
-
-	local cache = self.inspectCache[GUID]
-	local specIcon, iLvL = specIcon, iLvl
-
-	if (cache) then
-		specIcon = cache.specIcon
-		iLvl = cache.iLvl
-		if (specIcon) and (iLvl or not needIlvl) then
-			return specIcon, iLvl
-		end
-
-		if ((cache.lastUpdate - floor(GetTime())) > 120) or (not specIcon) or (iLvl or not needIlvl) then
-			self.inspectCache[GUID] = nil
-			-- try again ... save the current specicon and ilvl
-			return GetInspectInfo(self, unit, level, needIlvl, specIcon, iLvl)
-		end
-	end
-
-	if (_G.InspectFrame and _G.InspectFrame:IsShown()) then return specIcon, iLvl; end 
-	self.requestedGUID = GUID
-	self:RegisterEvent("INSPECT_READY")
-	NotifyInspect(unit)
-	return specIcon, iLvl;
-end
-
 --  [[  Apply The Tooltip Style  ]]  --
-local function UpdateTip(self)
+local function FixFuckingBlueColor(self)
 	self:SetBackdropColor(0, 0, 0, .7)
+	self:SetBorderColor(unpack(cfgGlobal.Colors.Border))
 end
 
 local function SetTooltipStyle(self)
@@ -292,17 +157,164 @@ local function SetTooltipStyle(self)
 						insets = {left = bgSize, right = bgSize, top = bgSize, bottom = bgSize}};
 	self:SetBackdrop(backdrop)
 
-	self:HookScript("OnShow", UpdateTip)
-	self:HookScript("OnHide", UpdateTip)
+	self:HookScript("OnShow", FixFuckingBlueColor)
+	self:HookScript("OnHide", FixFuckingBlueColor)
 	ns.CreateBorder(self, borderSize, 0)
-	self:SetBorderColor(unpack(cfg.Colors.Border))
 end
 
-local function GameTooltip_OnTooltipSetUnit(self)
+-------------------------------------------------------------
+-- OnSetUnit
+----   Inspect Stuff
+local GetInspectInfo
+do
+	local ilvlTip = CreateFrame("GameTooltip", "ItemlevelTooptip", UIParent, "GameTooltipTemplate")
+	ilvlTip:SetOwner(UIParent, "ANCHOR_NONE")
+
+	local function GetItemLevelFromLink(link)
+		ilvlTip:SetOwner(UIParent, "ANCHOR_NONE")
+		ilvlTip:SetHyperlink(link)
+		ilvlTip:Show()
+
+		local line = FindLine(ilvlTip, "Item Level (%d+)")
+		local iLvl
+		if line then
+			iLvl = line:GetText():match("Item Level (%d+)")
+		end
+		ilvlTip:Hide()
+		return iLvl or 0
+	end
+
+	local ipairs = _G.ipairs
+	local function GetItemLevel(unit)
+		local totlvl, numItems = 0, 0
+		for i, v in ipairs(InvSlotNames) do
+			local link = GetInventoryItemLink(unit, GetInventorySlotInfo(v..'Slot'))
+			if link ~= nil then
+				numItems = numItems + 1
+				totlvl = totlvl + (GetItemLevelFromLink(link) or 0)
+			end
+		end
+		if numItems > 5 and numItems < 17 and totlvl > 1 then
+			return floor(totlvl/numItems + .5)
+		end
+		return false
+	end
+	-- Get spec Icon 
+	local function GetSpecIcon(unit, isPlayer)
+		local spec
+		if(isPlayer) then
+			spec = GetSpecialization()
+		else
+			spec = GetInspectSpecialization(unit)
+		end
+		if(spec ~= nil and spec > 0) then
+			if (not isPlayer) then 
+				local role = GetSpecializationRoleByID(spec);
+				if(role ~= nil) then
+					local _, _, _, icon = GetSpecializationInfoByID(spec);
+					return icon
+				end
+			else
+				local _, _, _, icon = GetSpecializationInfo(spec)
+				return icon
+			end
+		end
+	end
+
+	GameTooltip:HookScript("OnEvent", function(self, event, ...)
+		local unit = "mouseover"
+		if event == "MODIFIER_STATE_CHANGED" then
+			if((... == "LSHIFT" or ... == "RSHIFT") and UnitExists(unit)) then
+				self:SetUnit(unit)
+			end
+		elseif event == "INSPECT_READY" then
+			local GUID = ...
+			if (self.requestedGUID ~= GUID) or (_G.InspectFrame and _G.InspectFrame:IsShown()) then 
+				return
+			end
+
+			if (UnitExists(unit)) then 
+				local cache = self.inspectCache
+
+				-- Fetch data while we got inspect
+				local iLvl = GetItemLevel(unit)
+				local specIcon = GetSpecIcon(unit)
+				local now = floor(GetTime())
+
+				cache[GUID] = {lastUpdate = now}
+				if specIcon then
+					cache[GUID].specIcon = specIcon
+				end
+				if iLvl then
+					cache[GUID].iLvl = iLvl
+				end
+
+				-- Update tooltip
+				self:SetUnit(unit)
+			end
+			self:UnregisterEvent(event)
+		end
+	end)
+
+	-- Getting the inspect Info, sometimes
+	function GetInspectInfo(self, unit, level, needIlvl, specIcon, iLvl)
+		if (not CanInspect(unit)) then return; end
+
+		local GUID = UnitGUID(unit)
+
+		if (GUID == playerGUID) then
+			specIcon = GetSpecIcon(unit, true)
+			local _, iLvl = GetAverageItemLevel()
+			return specIcon, floor(iLvl)
+		end
+
+		local cache = self.inspectCache[GUID]
+		local specIcon, iLvL = specIcon, iLvl
+
+		if (cache) then
+			specIcon = cache.specIcon
+			iLvl = cache.iLvl
+			if (specIcon) and (iLvl or not needIlvl) then
+				return specIcon, iLvl
+			end
+
+			if ((cache.lastUpdate - floor(GetTime())) > 120) or (not specIcon) or (iLvl or not needIlvl) then
+				self.inspectCache[GUID] = nil
+				-- try again ... save the current specicon and ilvl
+				return GetInspectInfo(self, unit, level, needIlvl, specIcon, iLvl)
+			end
+		end
+
+		if (_G.InspectFrame and _G.InspectFrame:IsShown()) then return specIcon, iLvl; end 
+		self.requestedGUID = GUID
+		self:RegisterEvent("INSPECT_READY")
+		NotifyInspect(unit)
+		return specIcon, iLvl;
+	end
+end
+
+GameTooltip:HookScript("OnTooltipSetUnit", function(self)
 	local unit = GetGameTooltipUnit(self)
-	if (not unit) then return; end
-	HideLines(self)
-	self:SetBackdropColor(0, 0, 0, .7)
+	if not unit then
+		return GameTooltip:Hide()
+	end
+
+	if strmatch(GameTooltipTextLeft1:GetText(), string.gsub(CORPSE_TOOLTIP, '%%s', '([^ ]+)')) then
+		local color = unitrgb.dead
+		return GameTooltipTextLeft1:SetTextColor(color[1], color[2], color[3])
+	end
+
+	for i = 3, self:NumLines() do
+		local tiptext = _G["GameTooltipTextLeft"..i]
+		local linetext = tiptext:GetText()
+
+		if (linetext) then
+			if (linetext:find(_G.PVP)) or (linetext:find(_G.FACTION_ALLIANCE)) or (linetext:find(_G.FACTION_HORDE)) then
+				tiptext:SetText(nil)
+				tiptext:Hide()
+			end
+		end
+	end
 
 	local level = UnitLevel(unit)
 	local isShiftKeyDown = IsShiftKeyDown()
@@ -435,15 +447,17 @@ local function GameTooltip_OnTooltipSetUnit(self)
 	else
 		GameTooltipStatusBar:SetStatusBarColor(0.6, 0.6, 0.6)
 	end
-end
+end)
 
-local function GameTooltip_OnTooltipCleared(self)
+-------------------------------------------------------------
+-- Color Item border
+GameTooltip:HookScript('OnTooltipCleared', function(self)
 	if not self.borderTextures then return; end
 	self:SetBorderTextureFile('default')
-	self:SetBorderColor(unpack(cfg.Colors.Border))
-end
+	FixFuckingBlueColor(self)
+end)
 
-local function GameTooltip_OnTooltipSetItem(self)
+GameTooltip:HookScript('OnTooltipSetItem', function(self)
 	local item, iLink = self:GetItem()
 	if item and self.borderTextures then
 		local _, _, quality = GetItemInfo(item)
@@ -452,23 +466,7 @@ local function GameTooltip_OnTooltipSetItem(self)
 			self:SetBorderColor(GetItemQualityColor(quality))
 		end
 	end
-end
-
-local function GameTooltip_ShowCompareItem(self, shift)
-    if ( not self ) then
-        self = GameTooltip;
-    end
-    local item, link = self:GetItem();
-    if ( not link ) then
-        return;
-    end
-     
-    for _, tip in pairs({unpack(self.shoppingTooltips)}) do
-    	if tip and tip:IsShown() then
-    		GameTooltip_OnTooltipSetItem(tip)
-    	end
-    end
-end
+end)
 
 local function GameTooltipStatusBar_OnValueChanged(self, value)
 	if not value and not self.Text then return; end
@@ -546,33 +544,26 @@ local function LoadTooltips(event, name)
 	GameTooltip.inspectCache = {}
 
 	-- Basic Styling
-	GameTooltipHeaderText:SetFont(cfg.Fonts.Normal, cfg.Tooltip.FontSize + 2)
-	GameTooltipText:SetFont(cfg.Fonts.Normal, cfg.Tooltip.FontSize)
-	GameTooltipTextSmall:SetFont(cfg.Fonts.Normal, cfg.Tooltip.FontSize)
+	GameTooltipHeaderText:SetFont(cfgGlobal.Fonts.Normal, cfg.Tooltip.FontSize + 2)
+	GameTooltipText:SetFont(cfgGlobal.Fonts.Normal, cfg.Tooltip.FontSize)
+	GameTooltipTextSmall:SetFont(cfgGlobal.Fonts.Normal, cfg.Tooltip.FontSize)
 
 	for _, tip in pairs(Tooltips) do
 		SetTooltipStyle(tip)
 	end
 
 	-- Skin Statusbar
-	GameTooltipStatusBar.Text = GameTooltipStatusBar:CreateFontString(nil, "OVERLAY")
-	GameTooltipStatusBar.Text:SetPoint("CENTER", GameTooltipStatusBar, 0, 1)
-	GameTooltipStatusBar.Text:SetFont(cfg.Fonts.Normal, cfg.Tooltip.FontSize, "THINOUTLINE")
+	local bar = GameTooltipStatusBar
+	bar.Text = bar:CreateFontString(nil, "OVERLAY")
+	bar.Text:SetPoint("CENTER", bar, 0, 1)
+	bar.Text:SetFont(cfgGlobal.Fonts.Normal, cfg.Tooltip.FontSize, "THINOUTLINE")
 
-	GameTooltipStatusBar:SetHeight(7)
-	GameTooltipStatusBar:SetBackdrop({bgFile = 'Interface\\Buttons\\WHITE8x8'})
-	GameTooltipStatusBar:SetBackdropColor(0, 0, 0, 0.3)
-	GameTooltipStatusBar:SetScript('OnValueChanged', GameTooltipStatusBar_OnValueChanged)
-	GameTooltipStatusBar:SetStatusBarTexture(cfg.Statusbar.Normal)
+	bar:SetHeight(6)
+	bar:SetBackdrop({bgFile = 'Interface\\Buttons\\WHITE8x8'})
+	bar:SetBackdropColor(0, 0, 0, 0.3)
+	bar:SetScript('OnValueChanged', GameTooltipStatusBar_OnValueChanged)
+	bar:SetStatusBarTexture(cfgGlobal.Statusbar.Normal)
 
-	-- Modify Unit Tooltip
-	GameTooltip:HookScript('OnTooltipSetUnit', GameTooltip_OnTooltipSetUnit)
-
-	-- Color Item Border
-	GameTooltip:HookScript('OnTooltipCleared', GameTooltip_OnTooltipCleared)
-	GameTooltip:HookScript('OnTooltipSetItem', GameTooltip_OnTooltipSetItem)
-
-	hooksecurefunc("GameTooltip_ShowCompareItem", GameTooltip_ShowCompareItem)
 
 	-- Fix the anchors
 	hooksecurefunc("GameTooltip_SetDefaultAnchor", function(self, parent)
@@ -581,15 +572,14 @@ local function LoadTooltips(event, name)
 	end)
 	hooksecurefunc(ShoppingTooltip1, "SetPoint", FixShoppingPosition)
 	hooksecurefunc(ShoppingTooltip2, "SetPoint", FixShoppingPosition)
-	--hooksecurefunc(ShoppingTooltip3, "SetPoint", FixShoppingPosition)
 
 	-- Spell / ItemID
 	SlashCmdList.SPELLID = function(msg)
 		ShowIDs = not ShowIDs
 		if (ShowIDs) then
-			ns.Print("ID's in tooltips: ON")
+			ns:Print("ID's in tooltips: ON")
 		else
-			ns.Print("ID's in tooltips: OFF")
+			ns:Print("ID's in tooltips: OFF")
 		end
 	end
 	_G.SLASH_SPELLID1 = "/spellid"
@@ -603,7 +593,6 @@ local function LoadTooltips(event, name)
 
 	-- Setup events
 	GameTooltip:RegisterEvent("MODIFIER_STATE_CHANGED")
-	GameTooltip:HookScript("OnEvent", GameTooltip_OnEvent)
 end
 
-ns.RegisterEvent("PLAYER_LOGIN", LoadTooltips)
+ns:RegisterEvent("PLAYER_LOGIN", LoadTooltips)

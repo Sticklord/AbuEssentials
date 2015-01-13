@@ -85,11 +85,11 @@ local function CreateBestChatLayout()
 	ChatFrame_AddMessageGroup(ChatFrame1, "MONSTER_WHISPER")
 	ChatFrame_AddMessageGroup(ChatFrame1, "MONSTER_BOSS_EMOTE")
 	ChatFrame_AddMessageGroup(ChatFrame1, "MONSTER_BOSS_WHISPER")
+	ChatFrame_AddChannel(ChatFrame1, CH.gen)
 
 	ChatFrame_RemoveAllMessageGroups(ChatFrame2)
 
 	ChatFrame_RemoveAllMessageGroups(ChatFrame3)
-	ChatFrame_AddChannel(ChatFrame3, CH.gen)
 	ChatFrame_AddChannel(ChatFrame3, CH.tr)
 	ChatFrame_AddChannel(ChatFrame3, CH.def)
 	ChatFrame_AddChannel(ChatFrame3, CH.lfg)
@@ -107,7 +107,7 @@ local function CreateBestChatLayout()
 end
 
 local function SetUpStandards()
-	ns.Print("Fixed default settings.")
+	ns:Print("Fixed default settings.")
 	
 	SetCVar("whisperMode", "popout_and_inline")
 	SetCVar("bnWhisperMode", "popout_and_inline")
@@ -125,8 +125,8 @@ local function SetUpStandards()
 	SetCVar("autoDismountFlying", 1)
 	CreateBestChatLayout()
 
-	if ns.EnableClassColorChat then
-		ns.EnableClassColorChat()
+	if AbuGlobal.EnableClassColorChat then
+		AbuGlobal.EnableClassColorChat()
 	end
 end
 
