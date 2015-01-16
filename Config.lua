@@ -42,8 +42,8 @@ ns.Config = {
 -- global setting for all abu addons. Mainly colors, textures, fonts etc.
 ns.GlobalConfig = {
 	Colors = {
-		Frame = 	{ 0.5, 0.5, 0.4 },
-		Border = 	{ 0.9, 0.9, 0.8 },
+		Frame = 	{ 0.5, 0.5, 0.4 }, -- Colors to skin the blizzard things.
+		Border = 	{ 0.9, 0.9, 0.8 }, -- Colors for button borders
 		Interrupt = { .9, .8, .2 },
 	},
 	Fonts = {

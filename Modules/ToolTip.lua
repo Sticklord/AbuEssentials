@@ -8,14 +8,10 @@ local cfgGlobal = ns.GlobalConfig
 local playerGUID
 local ShowIDs = false
 
-local 	GetTime, UnitName, UnitLevel, UnitExists, UnitIsDeadOrGhost, UnitFactionGroup =
-		GetTime, UnitName, UnitLevel, UnitExists, UnitIsDeadOrGhost, UnitFactionGroup
-local   UnitIsPlayer, GetMouseFocus, GetInventoryItemLink, GetInventorySlotInfo, GetItemInfo =
-		UnitIsPlayer, GetMouseFocus, GetInventoryItemLink, GetInventorySlotInfo, GetItemInfo
-local 	UnitClass, UnitIsTapped, UnitIsTappedByPlayer, UnitReaction, IsShiftKeyDown= 
+local 	GetTime, UnitName, UnitLevel, UnitExists, UnitIsDeadOrGhost, UnitFactionGroup, UnitIsPlayer, GetMouseFocus =
+		GetTime, UnitName, UnitLevel, UnitExists, UnitIsDeadOrGhost, UnitFactionGroup, UnitIsPlayer, GetMouseFocus
+local 	UnitClass, UnitIsTapped, UnitIsTappedByPlayer, UnitReaction, IsShiftKeyDown = 
 		UnitClass, UnitIsTapped, UnitIsTappedByPlayer, UnitReaction, IsShiftKeyDown
-local   GetInspectSpecialization, GetSpecializationRoleByID, GetSpecializationInfoByID, GetSpecializationInfo = 
-		GetInspectSpecialization, GetSpecializationRoleByID, GetSpecializationInfoByID, GetSpecializationInfo
 local 	find, format, select, _G, floor, unpack =
 		find, format, select, _G, floor, unpack
 
@@ -31,13 +27,6 @@ local Classification = {
 	rareelite = "|cffAF5050R+|r",
 	elite = "|cffAF5050+|r",
 	rare = "|cffAF5050R|r",
-}
-
--- For finding Ilvl
-local InvSlotNames = {	
-		'Head', 'Neck', 'Shoulder', 'Back', 'Chest',
-		'Wrist','Hands','Waist','Legs','Feet','Finger0',
-		'Finger1','Trinket0','Trinket1','MainHand','SecondaryHand',
 }
 
 local Tooltips = {
@@ -163,42 +152,38 @@ local function SetTooltipStyle(self)
 end
 
 -------------------------------------------------------------
--- OnSetUnit
 ----   Inspect Stuff
 local GetInspectInfo
 do
-	local ilvlTip = CreateFrame("GameTooltip", "ItemlevelTooptip", UIParent, "GameTooltipTemplate")
-	ilvlTip:SetOwner(UIParent, "ANCHOR_NONE")
+	local GetInventoryItemTexture, GetInventoryItemLink, GetItemInfo, GetSpecialization, GetInspectSpecialization = 
+		GetInventoryItemTexture, GetInventoryItemLink, GetItemInfo, GetSpecialization, GetInspectSpecialization
+	local GetSpecializationRoleByID, GetSpecializationInfoByID, GetSpecializationInfo = 
+		GetSpecializationRoleByID, GetSpecializationInfoByID, GetSpecializationInfo 
 
-	local function GetItemLevelFromLink(link)
-		ilvlTip:SetOwner(UIParent, "ANCHOR_NONE")
-		ilvlTip:SetHyperlink(link)
-		ilvlTip:Show()
-
-		local line = FindLine(ilvlTip, "Item Level (%d+)")
-		local iLvl
-		if line then
-			iLvl = line:GetText():match("Item Level (%d+)")
-		end
-		ilvlTip:Hide()
-		return iLvl or 0
-	end
-
-	local ipairs = _G.ipairs
 	local function GetItemLevel(unit)
-		local totlvl, numItems = 0, 0
-		for i, v in ipairs(InvSlotNames) do
-			local link = GetInventoryItemLink(unit, GetInventorySlotInfo(v..'Slot'))
-			if link ~= nil then
-				numItems = numItems + 1
-				totlvl = totlvl + (GetItemLevelFromLink(link) or 0)
+		local totlvl, numItems, numScanned = 0, 0, 0
+
+		for i = INVSLOT_FIRST_EQUIPPED, INVSLOT_LAST_EQUIPPED do
+			if (i ~= INVSLOT_BODY) and (i ~= INVSLOT_TABARD) then
+				if GetInventoryItemTexture(unit, i) then -- seems to be pretty accurate
+					numScanned = numScanned + 1
+				end
+
+				local link = GetInventoryItemLink(unit, i)
+				if link then
+					local _, _, _, iLevel = GetItemInfo(link)
+					numItems = numItems + 1
+					totlvl = totlvl + (iLevel or 0)
+				end
 			end
 		end
-		if numItems > 5 and numItems < 17 and totlvl > 1 then
+
+		if (numItems == numScanned) and totlvl > 1 then
 			return floor(totlvl/numItems + .5)
 		end
 		return false
 	end
+
 	-- Get spec Icon 
 	local function GetSpecIcon(unit, isPlayer)
 		local spec
@@ -218,7 +203,24 @@ do
 				local _, _, _, icon = GetSpecializationInfo(spec)
 				return icon
 			end
+		else
+			return [[Interface\Icons\INV_Misc_QuestionMark.blp]]
 		end
+	end
+
+	local maxInspects, timeLimit, notifyCount, startTime = 6, 10, 0, 0
+	hooksecurefunc("NotifyInspect", function() notifyCount = (notifyCount + 1); end)
+
+	local function CantInspect()
+		if InspectFrame and InspectFrame:IsShown() then
+			return true;
+		end
+
+		local now = GetTime()
+		if (now > startTime + timeLimit) then
+			notifyCount, startTime = 0, now
+		end
+		return notifyCount > maxInspects
 	end
 
 	GameTooltip:HookScript("OnEvent", function(self, event, ...)
@@ -229,9 +231,11 @@ do
 			end
 		elseif event == "INSPECT_READY" then
 			local GUID = ...
-			if (self.requestedGUID ~= GUID) or (_G.InspectFrame and _G.InspectFrame:IsShown()) then 
+			if (self.requestedGUID ~= GUID) or (CantInspect()) then 
+				self.requestedGUID = nil
 				return
 			end
+			self.requestedGUID = nil
 
 			if (UnitExists(unit)) then 
 				local cache = self.inspectCache
@@ -241,7 +245,8 @@ do
 				local specIcon = GetSpecIcon(unit)
 				local now = floor(GetTime())
 
-				cache[GUID] = {lastUpdate = now}
+				cache[GUID] = {lastUpdate = floor(GetTime() + 120)}
+
 				if specIcon then
 					cache[GUID].specIcon = specIcon
 				end
@@ -260,32 +265,30 @@ do
 	function GetInspectInfo(self, unit, level, needIlvl, specIcon, iLvl)
 		if (not CanInspect(unit)) then return; end
 
-		local GUID = UnitGUID(unit)
-
-		if (GUID == playerGUID) then
+		if (unit == 'player' or UnitIsUnit(unit, 'player')) then
 			specIcon = GetSpecIcon(unit, true)
 			local _, iLvl = GetAverageItemLevel()
 			return specIcon, floor(iLvl)
 		end
 
+		local GUID = UnitGUID(unit)
 		local cache = self.inspectCache[GUID]
-		local specIcon, iLvL = specIcon, iLvl
 
 		if (cache) then
 			specIcon = cache.specIcon
 			iLvl = cache.iLvl
-			if (specIcon) and (iLvl or not needIlvl) then
-				return specIcon, iLvl
-			end
 
-			if ((cache.lastUpdate - floor(GetTime())) > 120) or (not specIcon) or (iLvl or not needIlvl) then
+			if (cache.lastUpdate < GetTime()) or (not specIcon) or (not iLvl and needIlvl) then
 				self.inspectCache[GUID] = nil
 				-- try again ... save the current specicon and ilvl
 				return GetInspectInfo(self, unit, level, needIlvl, specIcon, iLvl)
+			else
+				return specIcon, iLvl
 			end
 		end
 
-		if (_G.InspectFrame and _G.InspectFrame:IsShown()) then return specIcon, iLvl; end 
+		if CantInspect() then return specIcon, iLvl; end
+
 		self.requestedGUID = GUID
 		self:RegisterEvent("INSPECT_READY")
 		NotifyInspect(unit)
