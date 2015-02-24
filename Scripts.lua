@@ -1,8 +1,5 @@
 local name, ns = ...
 
---  [[ Change DameFont ]] --
-_G.DAMAGE_TEXT_FONT = ns.GlobalConfig.Fonts.Damage
-
 --  [[ Map Edit 	]] --
 WorldMapFrame:SetScript("OnMouseWheel", function(self, delta)
 	local newLevel = GetCurrentMapDungeonLevel() + delta
@@ -48,21 +45,19 @@ local function HideFishTip()
 end
 ns:RegisterEvent("PLAYER_LOGIN", HideFishTip)
 
---	[[	Move Loots 	]] --
---[[do
-	local alerts = _G.LOOT_WON_ALERT_FRAMES
-	hooksecurefunc("LootWonAlertFrame_ShowAlert", function()
-		for i = 1, #alerts do
-			local frame = alerts[i]
-			if not frame.UraltUndSenilLahmAufMichZuKroch then
-				frame:HookScript("OnShow", frame.Hide)
-				frame:Hide()
-				frame.UraltUndSenilLahmAufMichZuKroch = true
-			end
+-- Replace Blizzards duration display
+do	local minute, hour, day = 60, 60*60, 60*60*24
+	local hourish, dayish = minute*59, hour*23 
+	function _G.SecondsToTimeAbbrev(sec)
+		if ( sec >= dayish  ) then
+			return '|cffffffff%dd|r', floor(sec/day + .5);
+		elseif ( sec >= hourish  ) then
+			return '|cffffffff%dh|r', floor(sec/hour + .5);
+		elseif ( sec >= minute  ) then
+			return '|cffffffff%dm|r', floor(sec/minute + .5);
 		end
-	end)
-end
-]]
+		return '|cffffffff%d|r', sec;
+end	end
 
 --	[[	Change Raid Sliders ]]  --
 local function ChangeRaidSliders()
@@ -253,17 +248,24 @@ end
 ---------------------------------------------------------------
 --		Garrison stuff
 ---------------------------------------------------------------
-
---  work orders mousewheel
-local function enableWorkOrderMousewheel(...)
-	local e, addon = ...
-	if (addon == "Blizzard_GarrisonUI") then
-		local f = GarrisonCapacitiveDisplayFrame.StartWorkOrderButton
-		f:EnableMouseWheel(true)
-		f:SetScript("OnMouseWheel", function(self, delta)
+do
+	local button
+	local function start_ticker()
+		if button:IsVisible() and button:IsEnabled() then
 			_G.GarrisonCapacitiveStartWorkOrder_OnClick()
+			_G.C_Timer.After(0.5, start_ticker)
+		end
+	end
+
+	local function enableWorkOrderMousewheel(e, addon)
+		if (addon ~= "Blizzard_GarrisonUI") then return; end
+
+		button = GarrisonCapacitiveDisplayFrame.StartWorkOrderButton
+		button:HookScript("OnMouseUp", function(self, button)
+			if (button == "LeftButton") then return; end
+			start_ticker()
 		end)
 		ns:UnregisterEvent(e, enableWorkOrderMousewheel)
 	end
+	ns:RegisterEvent("ADDON_LOADED", enableWorkOrderMousewheel)
 end
-ns:RegisterEvent("ADDON_LOADED", enableWorkOrderMousewheel)
