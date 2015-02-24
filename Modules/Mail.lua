@@ -1,12 +1,13 @@
 --[======================================================[
 		Mail
 			Adds a open all button in the mail
-			and prints total cash recieved
+			with pooooooowar.
+
 --]======================================================]
 local _, ns = ...
 if (not ns.Config.EnableMailModule) then return; end
 
-local LOOTDELAY = 0.6
+local LOOTDELAY = 0.3
 local MAX_LOOPS = 5
 local onlyCash, origInboxFrame_OnClick
 
@@ -36,9 +37,18 @@ local function checkBagSize()
 	return totalFree
 end
 
-local sameIndexCount, lastIndex = 0, 0
 function Mail:ProcessMail()
 	if not InboxFrame:IsVisible() then return self:StopMail() end
+
+	if self.index <= 0 then
+		local items_left = GetInboxNumItems()
+		if (items_left <= 0) or (self.times_looped >= MAX_LOOPS) then
+			return self:StopMail()
+		end
+
+		self.times_looped = self.times_looped + 1
+		self.index = items_left
+	end
 
 	local _, _, sender, subject, money, CODAmount, _, numItems, wasRead, wasReturned, textCreated, canReply, isGM = GetInboxHeaderInfo(self.index)
 	numItems = (not numItems) and 0 or numItems
@@ -48,39 +58,18 @@ function Mail:ProcessMail()
 		if (money <= 0) and (numItems <= 0) and bacon[sender] then
 			DeleteInboxItem(self.index)
 			self.delay = LOOTDELAY
-			return
 		end
 
-		self.index = self.index - 1
-		_, _, sender, subject, money, CODAmount, _, numItems, wasRead, wasReturned, textCreated, canReply, isGM = GetInboxHeaderInfo(self.index)
-		numItems = (not numItems) and 0 or numItems
-	elseif (sameIndexCount > MAX_LOOPS) then
-		self.index = self.index - 1
-		sameIndexCount = 0
-	end
-	if self.index <= 0 then 
-		return self:StopMail() 
-	end
-
-	if (money > 0) then
-		TakeInboxMoney(self.index)
-		self.delay = LOOTDELAY
-		if money and money > 0 and (self.lastMoneyLooted ~= self.index) then
-			self.cashCount = self.cashCount + money
-			self.lastMoneyLooted = self.index
-		end
 	elseif (not onlyCash) and (numItems > 0) and (CODAmount <= 0) and (checkBagSize() > 0) then
-
 		AutoLootMailItem(self.index)
 		self.delay = LOOTDELAY
-	end
 
-	if ( self.index == lastIndex ) then
-		sameIndexCount = sameIndexCount + 1
-	else
-		sameIndexCount = 0
+	elseif (money > 0) then
+		TakeInboxMoney(self.index)
+		self.delay = LOOTDELAY
 	end
-	lastIndex = self.index
+	
+	self.index = self.index - 1
 end
 
 function Mail:StopMail(msg)
@@ -93,10 +82,7 @@ function Mail:StopMail(msg)
 	if msg then
 		ns:Print(msg)
 	end
-	if self.cashCount > 0 then
-		ns:Print('Earned '..GetCoinTextureString(self.cashCount)..' from mailbox.')
-		self.cashCount = 0
-	end
+
 	local _, totalLeft = GetInboxNumItems()
 	if (totalLeft == 0) then
 		MiniMapMailFrame:Hide()
@@ -113,10 +99,9 @@ function Mail:GetMail(grabOnlyCash)
 		self.index = GetInboxNumItems()
 		self.delay = 0
 		self.ticker = 0
-		self.lastMoneyLooted = -1
+		self.times_looped = 0
 
 		onlyCash = grabOnlyCash
-		self:RegisterEvent("UI_ERROR_MESSAGE")
 
 		origInboxFrame_OnClick = InboxFrame_OnClick
 		_G.InboxFrame_OnClick = function() end
@@ -131,36 +116,57 @@ function Mail:UI_ERROR_MESSAGE(event, arg1)
 	end
 end
 
-local function Load(event, ...)
-	Mail.cashCount = 0
-
-	if not button then -- Create Grab All Button
-		button = CreateFrame("Button", "AbuMail", InboxFrame, "UIPanelButtonTemplate")
-		button:SetWidth(120)
-		button:SetHeight(25)
-		button:SetPoint("CENTER", InboxFrame, "TOP", -36, -399)
-		button:SetText("Open All")
-		button:RegisterEvent("MODIFIER_STATE_CHANGED")
-		button:SetScript("OnEvent", function(self, event, key, state)
-			if key ~= "LSHIFT" then return; end
-			if state == 1 then
-				self:SetText("Take Money")
-				self.takeMoney = true
-			else
-				self:SetText("Open All")
-				self.takeMoney = false
-			end
-		end)
-
-		button:SetScript("OnClick", function(self) Mail:GetMail(self.takeMoney) end)
-		button:SetFrameLevel(button:GetFrameLevel() + 1)
+local function CalculateMoney()
+	local profit = 0
+	for i = GetInboxNumItems(), 1, -1 do
+		local _, _, _, _, money = GetInboxHeaderInfo(i)
+		profit = profit + (money or 0)
 	end
-
-	Mail:SetScript("OnEvent", function(self, event, ...) 
-		if self[event] then 
-			return self[event](self, event, ...) 
-		end 
-	end)
+	return profit
 end
 
-ns:RegisterEvent("PLAYER_LOGIN", Load)
+function Mail:PLAYER_LOGIN(event, ...)
+	button = CreateFrame("Button", "AbuMail", InboxFrame, "UIPanelButtonTemplate")
+	button:SetWidth(120)
+	button:SetHeight(25)
+	button:SetPoint("CENTER", InboxFrame, "TOP", -36, -399)
+	button:SetText("Take All")
+	button:SetFrameLevel(button:GetFrameLevel() + 1)
+
+	button:RegisterEvent("MODIFIER_STATE_CHANGED")
+	button:SetScript("OnEvent", function(self, event, key, state)
+		if key ~= "LSHIFT" then return; end
+		if state == 1 then
+			if (CalculateMoney() == 0) then
+				self:Disable()
+			else
+				self:Enable()
+			end
+			self:SetText("Take Money")
+			self.takeMoney = true
+		else
+			self:SetText("Take All")
+			self.takeMoney = false
+			self:Enable()
+		end
+	end)
+
+	button:SetScript("OnClick", function(self) Mail:GetMail(self.takeMoney) end)
+	button:SetScript("OnEnter", function(self, motion)
+		local profit = CalculateMoney()
+		if profit == 0 then return; end
+
+		GameTooltip:SetOwner(self, "ANCHOR_TOP");
+		GameTooltip:SetText("Total Money:\n|cffffffff" .. GetCoinTextureString(profit).."|r")
+		GameTooltip:Show();
+	end)
+	button:SetScript("OnLeave", GameTooltip_Hide)
+	button:SetScript("OnHide", GameTooltip_Hide)
+end
+
+Mail:RegisterEvent("PLAYER_LOGIN")
+Mail:SetScript("OnEvent", function(self, event, ...) 
+	if self[event] then 
+		return self[event](self, event, ...) 
+	end 
+end)
