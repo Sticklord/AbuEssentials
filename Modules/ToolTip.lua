@@ -12,8 +12,8 @@ local 	GetTime, UnitName, UnitLevel, UnitExists, UnitIsDeadOrGhost, UnitFactionG
 		GetTime, UnitName, UnitLevel, UnitExists, UnitIsDeadOrGhost, UnitFactionGroup, UnitIsPlayer, GetMouseFocus
 local 	UnitClass, UnitIsTapped, UnitIsTappedByPlayer, UnitReaction, IsShiftKeyDown = 
 		UnitClass, UnitIsTapped, UnitIsTappedByPlayer, UnitReaction, IsShiftKeyDown
-local 	find, format, select, _G, floor, unpack =
-		find, format, select, _G, floor, unpack
+local 	find, format, select, _G, floor, unpack, GameTooltip =
+		find, format, select, _G, floor, unpack, GameTooltip
 
 local roleicons = {
 	TANK = '|TInterface\\LFGFrame\\UI-LFG-ICON-PORTRAITROLES.blp:13:13:0:0:64:64:0:19:22:41|t',
@@ -21,6 +21,8 @@ local roleicons = {
 	DAMAGER = '|TInterface\\LFGFrame\\UI-LFG-ICON-PORTRAITROLES.blp:13:13:0:0:64:64:20:39:22:41|t',
 	NONE = '',
 }
+
+local ILVL_PREFIX = STAT_AVERAGE_ITEM_LEVEL .. ':'
 
 local Classification = {
 	worldboss = "|cffAF5050B|r",
@@ -153,7 +155,7 @@ end
 
 -------------------------------------------------------------
 ----   Inspect Stuff
-local GetInspectInfo
+local GetInspectInfo, TryInspect, requestedGUID
 do
 	local GetInventoryItemTexture, GetInventoryItemLink, GetItemInfo, GetSpecialization, GetInspectSpecialization = 
 		GetInventoryItemTexture, GetInventoryItemLink, GetItemInfo, GetSpecialization, GetInspectSpecialization
@@ -185,115 +187,148 @@ do
 	end
 
 	-- Get spec Icon 
-	local function GetSpecIcon(unit, isPlayer)
-		local spec
-		if(isPlayer) then
-			spec = GetSpecialization()
-		else
-			spec = GetInspectSpecialization(unit)
-		end
-		if(spec ~= nil and spec > 0) then
-			if (not isPlayer) then 
-				local role = GetSpecializationRoleByID(spec);
-				if(role ~= nil) then
-					local _, _, _, icon = GetSpecializationInfoByID(spec);
-					return icon
-				end
-			else
-				local _, _, _, icon = GetSpecializationInfo(spec)
+	local function GetSpecIcon(unit)
+		local spec = GetInspectSpecialization(unit)
+
+		if(spec and spec > 0) then
+			local role = GetSpecializationRoleByID(spec);
+			if(role ~= nil) then
+				local _, _, _, icon = GetSpecializationInfoByID(spec);
 				return icon
 			end
-		else
-			return [[Interface\Icons\INV_Misc_QuestionMark.blp]]
 		end
 	end
 
-	local maxInspects, timeLimit, notifyCount, startTime = 6, 10, 0, 0
+	local MAX_INSPECTLIMIT, TIME_LIMIT = 6, 10
+	local notifyCount, startTime = 0, 0
 	hooksecurefunc("NotifyInspect", function() notifyCount = (notifyCount + 1); end)
 
-	local function CantInspect()
-		if InspectFrame and InspectFrame:IsShown() then
+	local clearInspect = function() requestedGUID = nil end
+	function TryInspect()
+		if (InspectFrame and InspectFrame:IsShown()) or UnitIsDeadOrGhost("player") then
 			return true;
 		end
 
 		local now = GetTime()
-		if (now > startTime + timeLimit) then
+		if (now > startTime + TIME_LIMIT) then
 			notifyCount, startTime = 0, now
 		end
-		return notifyCount > maxInspects
+
+		if (notifyCount >= MAX_INSPECTLIMIT) then
+			return;
+		end
+
+		local unit = "mouseover"
+		local GUID = UnitExists(unit) and UnitGUID(unit)
+		if (GUID) and (requestedGUID ~= GUID) then
+			requestedGUID = GUID
+			NotifyInspect(unit)
+			C_Timer.After(2, clearInspect) -- Its outdated
+		end
 	end
 
 	GameTooltip:HookScript("OnEvent", function(self, event, ...)
 		local unit = "mouseover"
 		if event == "MODIFIER_STATE_CHANGED" then
-			if((... == "LSHIFT" or ... == "RSHIFT") and UnitExists(unit)) then
+			local key = ...
+			if((key == "LSHIFT" or key == "RSHIFT") and UnitExists(unit)) then
 				self:SetUnit(unit)
 			end
 		elseif event == "INSPECT_READY" then
 			local GUID = ...
-			if (self.requestedGUID ~= GUID) or (CantInspect()) then 
-				self.requestedGUID = nil
+			if (requestedGUID ~= GUID) then 
 				return
 			end
-			self.requestedGUID = nil
 
-			if (UnitExists(unit)) then 
-				local cache = self.inspectCache
+			if (UnitExists(unit)) then
+				
+				self.inspectCache[GUID] = self.inspectCache[GUID] or { }
+				local cache = self.inspectCache[GUID]
+
+				requestedGUID = nil
+				cache.lastUpdate = floor(GetTime() + 120)
 
 				-- Fetch data while we got inspect
-				local iLvl = GetItemLevel(unit)
-				local specIcon = GetSpecIcon(unit)
-				local now = floor(GetTime())
-
-				cache[GUID] = {lastUpdate = floor(GetTime() + 120)}
-
-				if specIcon then
-					cache[GUID].specIcon = specIcon
+				local icon = GetSpecIcon(unit)
+				if icon then
+					cache.icon = icon
 				end
+				local iLvl = GetItemLevel(unit)
 				if iLvl then
-					cache[GUID].iLvl = iLvl
+					cache.iLvl = iLvl
+					ClearInspectPlayer()
 				end
 
 				-- Update tooltip
 				self:SetUnit(unit)
 			end
-			self:UnregisterEvent(event)
 		end
 	end)
 
 	-- Getting the inspect Info, sometimes
-	function GetInspectInfo(self, unit, level, needIlvl, specIcon, iLvl)
+	function GetInspectInfo(self, unit, level, needIlvl)
 		if (not CanInspect(unit)) then return; end
 
 		if (unit == 'player' or UnitIsUnit(unit, 'player')) then
-			specIcon = GetSpecIcon(unit, true)
+			local _, _, _, icon = GetSpecializationInfo(GetSpecialization() or 0)
 			local _, iLvl = GetAverageItemLevel()
-			return specIcon, floor(iLvl)
+			return icon, floor(iLvl)
 		end
 
 		local GUID = UnitGUID(unit)
 		local cache = self.inspectCache[GUID]
+		local icon, iLvl
 
 		if (cache) then
-			specIcon = cache.specIcon
+			icon = cache.icon
 			iLvl = cache.iLvl
 
-			if (cache.lastUpdate < GetTime()) or (not specIcon) or (not iLvl and needIlvl) then
-				self.inspectCache[GUID] = nil
-				-- try again ... save the current specicon and ilvl
-				return GetInspectInfo(self, unit, level, needIlvl, specIcon, iLvl)
-			else
-				return specIcon, iLvl
+			-- chech if we dont need to update
+			if (cache.lastUpdate > GetTime()) and (icon) and (not needIlvl or iLvl) then
+				return icon, iLvl
 			end
 		end
 
-		if CantInspect() then return specIcon, iLvl; end
-
-		self.requestedGUID = GUID
-		self:RegisterEvent("INSPECT_READY")
-		NotifyInspect(unit)
-		return specIcon, iLvl;
+		TryInspect()
+		return icon, iLvl
 	end
+end
+
+local dotmaker = CreateFrame("Frame")
+do
+	dotmaker.count = 1
+	dotmaker.elapsed = 0
+	local UPDATE_TIME = 0.5
+	local dots = { '.', '..', '...', '..' }
+
+	dotmaker:SetScript('OnUpdate', function(self, elapsed)
+		self.elapsed = self.elapsed + elapsed
+		if self.elapsed < UPDATE_TIME then return; end
+		self.elapsed = 0
+
+		local found
+		for i = 1, GameTooltip:NumLines() do
+			local string = _G['GameTooltipTextLeft'..i]
+			local stringtext = string and string:GetText()
+
+			if stringtext and stringtext:match(ILVL_PREFIX) then
+				_G['GameTooltipTextRight'..i]:SetText("|cffFFFFFF".. dots[self.count] .. "|r")
+
+				if self.count == 4 then
+					self.count = 1
+				else
+					self.count = self.count + 1
+				end
+
+				TryInspect()
+				found = true
+				break;
+			end
+		end
+		if not found then
+			self:Hide()
+		end
+	end)
 end
 
 GameTooltip:HookScript("OnTooltipSetUnit", function(self)
@@ -391,8 +426,15 @@ GameTooltip:HookScript("OnTooltipSetUnit", function(self)
 			LevelLine:SetFormattedText("|cff%02x%02x%02x%s|r %s |c%s%s|r", diffColor.r * 255, diffColor.g * 255, diffColor.b * 255, level > 0 and level or "??", race or '', color.colorStr, localeClass)
 		end
 
-		if (iLvl) and (isShiftKeyDown) then
-			self:AddDoubleLine(STAT_AVERAGE_ITEM_LEVEL .. ':', '|cffFFFFFF'..iLvl..'|r')
+		if (isShiftKeyDown) then
+			if (iLvl) then
+				dotmaker:Hide()
+				self:AddDoubleLine(ILVL_PREFIX, "|cFFFFFFFF"..iLvl)
+			else
+				self:AddDoubleLine(ILVL_PREFIX, " ")
+				dotmaker.count = 1
+				dotmaker:Show()
+			end
 		end
 	else
 		local LevelLine = FindLine(self, LEVEL, 2)
@@ -596,6 +638,7 @@ local function LoadTooltips(event, name)
 
 	-- Setup events
 	GameTooltip:RegisterEvent("MODIFIER_STATE_CHANGED")
+	GameTooltip:RegisterEvent("INSPECT_READY")
 end
 
 ns:RegisterEvent("PLAYER_LOGIN", LoadTooltips)
