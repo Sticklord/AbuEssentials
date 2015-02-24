@@ -1,7 +1,6 @@
 ## Interface: 60000
 ## Title: |cffffffffAbu|rSuxDix
 ## Author: Abu
-## SavedVariablesPerCharacter: AbuEssentialsSavedVars
 ## X-Credits: Mumin, for the name.
 
 libs\AbuTheLib.lua
@@ -9,11 +8,14 @@ libs\AbuTheLib.lua
 Tools\animations.lua
 Tools\api.lua
 
+defaults.lua
 CONFIG.lua
+
 Core.lua
 Scripts.lua
 Setup.lua
 
+Modules\fonts.lua
 Modules\Mail.lua
 Modules\sendstuff.lua
 Modules\TalentMacro.lua

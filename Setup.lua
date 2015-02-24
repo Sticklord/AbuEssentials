@@ -107,8 +107,6 @@ local function CreateBestChatLayout()
 end
 
 local function SetUpStandards()
-	ns:Print("Fixed default settings.")
-	
 	SetCVar("whisperMode", "popout_and_inline")
 	SetCVar("bnWhisperMode", "popout_and_inline")
 	SetCVar("conversationMode", "popout_and_inline")
@@ -128,6 +126,8 @@ local function SetUpStandards()
 	if AbuGlobal.EnableClassColorChat then
 		AbuGlobal.EnableClassColorChat()
 	end
+	
+	ns:Print("Fixed default settings.")
 end
 
 _G.SLASH_ABUSETUP1 = '/abusetup'

@@ -41,7 +41,7 @@ local function UnAfk()
 	end
 end
 
-_G.SLASH_UNAFK1 = '/uafk'
+_G.SLASH_UNAFK1 = '/antiafk'
 local isUnAfk = false
 SlashCmdList.UNAFK = function(msg)
 	if (not isUnAfk) then

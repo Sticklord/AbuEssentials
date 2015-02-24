@@ -50,6 +50,7 @@ ns.GlobalConfig = {
 		Damage = path..'Font\\Defused.ttf',
 		Normal = path..'Font\\ExpresswayFree.ttf',
 		Actionbar = path..'Font\\AccPrec.ttf',
+		Fancy = path..'Font\\Atarian.ttf',
 	},
 	Statusbar = {
 		Normal = path..'statusbarTex.tga',
