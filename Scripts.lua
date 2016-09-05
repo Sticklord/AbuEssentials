@@ -110,7 +110,7 @@ StaticPopupDialogs["LOOT_BIND"].OnCancel = function(self, slot)
 	end
 end
 
--- Encanting scrolls button
+--[[ Encanting scrolls button
 local scrollb
 local enchanting = GetSpellInfo(7411)
 
@@ -144,7 +144,7 @@ ns:RegisterEvent("ADDON_LOADED", function(event, name)
 			end
 		end)
 	end
-end)
+end)]]
 
 -- Fix blizz token UI, and maybe it breaks other addons, but screw em
 local _GetCurrencyListInfo = GetCurrencyListInfo

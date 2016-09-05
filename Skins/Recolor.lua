@@ -95,9 +95,15 @@ local frames = {
 	"MainMenuXPBarDiv17",
 	"MainMenuXPBarDiv18",
 	"MainMenuXPBarDiv19",
+
+	ArtifactWatchBar.StatusBar.WatchBarTexture0,
+	ArtifactWatchBar.StatusBar.WatchBarTexture1, 
+	ArtifactWatchBar.StatusBar.WatchBarTexture2, 
+	ArtifactWatchBar.StatusBar.WatchBarTexture3,
 }
 
 local function Paint(obj)
+
 	if not obj or obj:GetObjectType() ~= "Texture" then
 		return
 	end
@@ -118,6 +124,10 @@ ns:RegisterEvent("ADDON_LOADED", function(event, name)
 	Paint(TimeManagerClockButton:GetRegions())
 
 	for _, name in pairs(frames) do
-		Paint(_G[name])
+		if type(name) == 'string' then
+			Paint(_G[name])
+		else
+			Paint(name)
+		end
 	end
 end)

@@ -10,8 +10,8 @@ local ShowIDs = false
 
 local 	GetTime, UnitName, UnitLevel, UnitExists, UnitIsDeadOrGhost, UnitFactionGroup, UnitIsPlayer, GetMouseFocus =
 		GetTime, UnitName, UnitLevel, UnitExists, UnitIsDeadOrGhost, UnitFactionGroup, UnitIsPlayer, GetMouseFocus
-local 	UnitClass, UnitIsTapped, UnitIsTappedByPlayer, UnitReaction, IsShiftKeyDown = 
-		UnitClass, UnitIsTapped, UnitIsTappedByPlayer, UnitReaction, IsShiftKeyDown
+local 	UnitClass, UnitIsTapDenied, UnitReaction, IsShiftKeyDown = 
+		UnitClass, UnitIsTapDenied, UnitReaction, IsShiftKeyDown
 local 	find, format, select, _G, floor, unpack, GameTooltip =
 		find, format, select, _G, floor, unpack, GameTooltip
 
@@ -66,7 +66,7 @@ local function GetUnitColor( unit )
 	if (UnitIsPlayer(unit)) then
 		local _, class = UnitClass(unit)
 		color = _G.RAID_CLASS_COLORS[class]
-	elseif (UnitIsTapped(unit) and not UnitIsTappedByPlayer(unit)) then
+	elseif (UnitIsTapDenied(unit)) then
 		color = COLORS.TAPPED
 	else
 		local reaction = UnitReaction(unit, "player")
@@ -354,15 +354,14 @@ GameTooltip:HookScript("OnTooltipSetUnit", function(self)
 		end
 	end
 
+	local canInspect = CanInspect(unit)
 	local level = UnitLevel(unit)
 	local isShiftKeyDown = IsShiftKeyDown()
 	local color, r, g, b = GetUnitColor(unit)
 	local name, realm = UnitName(unit)
+	local LevelLine_OffSet = 2
 
 	if UnitIsPlayer(unit) and name ~= _G.UNKNOWN then
-		local localeClass, class = UnitClass(unit)
-		local specIcon, iLvl = GetInspectInfo(self, unit, level, isShiftKeyDown)
-
 		-- [[ Player Name Stuff ]]
 		local titledName = UnitPVPName(unit)
 		if cfg.Tooltip.ShowTitle and titledName then
@@ -399,6 +398,7 @@ GameTooltip:HookScript("OnTooltipSetUnit", function(self)
 		-- [[ Guild ]] --
 		local guildName, guildRankName, _, guildRealm = GetGuildInfo(unit)
 		if (guildName) then
+			LevelLine_OffSet = 3
 			if (guildRealm and isShiftKeyDown) then
 				guildName = guildName.."-"..guildRealm
 			end
@@ -409,24 +409,57 @@ GameTooltip:HookScript("OnTooltipSetUnit", function(self)
 				GameTooltipTextLeft2:SetText(("<|cffff20cc%s|r>"):format(guildName))
 			end
 		end
+	end
 
-		-- [[ Level ]] --
-		local offset = guildName and 3 or 2
-		local LevelLine = FindLine(self, LEVEL, offset)
-		if (LevelLine) then
-			local diffColor = GetQuestDifficultyColor(level)
-			local race, englishRace = UnitRace(unit)
+	local LevelLine = FindLine(self, LEVEL, LevelLine_OffSet)
+	if LevelLine then
+		local specIcon, iLvl = GetInspectInfo(self, unit, level, isShiftKeyDown)
+
+		local diffColor 
+		if(UnitIsWildBattlePet(unit) or UnitIsBattlePetCompanion(unit)) then
+			level = UnitBattlePetLevel(unit)
+			local teamLevel = C_PetJournal.GetPetTeamAverageLevel();
+			if(teamLevel) then
+				diffColor = GetRelativeDifficultyColor(teamLevel, level); 
+			else
+				diffColor = GetQuestDifficultyColor(level)
+			end
+		else
+			diffColor = GetQuestDifficultyColor(level)
+		end
+		if level <= 0 then
+			diffColor.r = 0.68
+			diffColor.g = 0.31
+			diffColor.b = 0.31
+			level = "??"
+		end
+
+		local pvpFlag = ""
+		local race, class, colorString
+		if canInspect then
+			local englishRace
+			race, englishRace = UnitRace(unit)
 			local _, factionGroup = UnitFactionGroup(unit)
 			if(factionGroup and englishRace == "Pandaren") then
 				race = factionGroup..(race and " "..race or "")
 			end
+			class = UnitClass(unit)
+			class = format("|c%s%s|r", color.colorStr, class)
 			if specIcon then
-				localeClass = ' |T'..specIcon..':0|t '..localeClass
+				class = ' |T'..specIcon..':0|t '..class
 			end
-			LevelLine:SetFormattedText("|cff%02x%02x%02x%s|r %s |c%s%s|r", diffColor.r * 255, diffColor.g * 255, diffColor.b * 255, level > 0 and level or "??", race or '', color.colorStr, localeClass)
+		else
+			race = Classification[UnitClassification(unit)] or ""
+			class = UnitCreatureType(unit) or ""
+
+			if(UnitIsPVP(unit)) then
+				pvpFlag = format(" (%s)", PVP)
+			end
 		end
 
-		if (isShiftKeyDown) then
+		LevelLine:SetFormattedText("|cff%02x%02x%02x%s|r %s %s", diffColor.r * 255, diffColor.g * 255, diffColor.b * 255, level or "", race or "", class or "", pvpFlag)
+
+		if (canInspect) and (isShiftKeyDown) then
 			if (iLvl) then
 				dotmaker:Hide()
 				self:AddDoubleLine(ILVL_PREFIX, "|cFFFFFFFF"..iLvl)
@@ -435,32 +468,6 @@ GameTooltip:HookScript("OnTooltipSetUnit", function(self)
 				dotmaker.count = 1
 				dotmaker:Show()
 			end
-		end
-	else
-		local LevelLine = FindLine(self, LEVEL, 2)
-		if(LevelLine) then
-			local creatureClassification = UnitClassification(unit)
-			local creatureType = UnitCreatureType(unit)
-			local pvpFlag = ""
-			local diffColor
-			if(UnitIsWildBattlePet(unit) or UnitIsBattlePetCompanion(unit)) then
-				level = UnitBattlePetLevel(unit)
-				
-				local teamLevel = C_PetJournal.GetPetTeamAverageLevel();
-				if(teamLevel) then
-					diffColor = GetRelativeDifficultyColor(teamLevel, level); 
-				else
-					diffColor = GetQuestDifficultyColor(level)
-				end
-			else
-				diffColor = GetQuestDifficultyColor(level)
-			end
-	
-			if(UnitIsPVP(unit)) then
-				pvpFlag = format(" (%s)", PVP)
-			end
-
-			LevelLine:SetFormattedText("|cff%02x%02x%02x%s|r%s %s%s", diffColor.r * 255, diffColor.g * 255, diffColor.b * 255, level > 0 and level or "|cffAF5050??|r", Classification[creatureClassification] or "", creatureType or "", pvpFlag)
 		end
 	end
 
@@ -474,7 +481,7 @@ GameTooltip:HookScript("OnTooltipSetUnit", function(self)
 			local _, r, g, b = GetUnitColor(unittarget)
 			target = format("|cff%02x%02x%02x%s|r", r*255, g*255, b*255, UnitName(unittarget))
 			local Icon = GetRaidTargetIndex(unittarget)
-			if Icon then
+			if ICON_LIST[Icon] then
 				target = format("%s%s", ICON_LIST[Icon].."10|t", target)
 			end
 		end
@@ -632,7 +639,7 @@ local function LoadTooltips(event, name)
 	hooksecurefunc(GameTooltip, "SetUnitAura", SetUnitAura)
 	hooksecurefunc(GameTooltip, "SetUnitBuff", SetUnitAura)
 	hooksecurefunc(GameTooltip, "SetUnitDebuff", SetUnitAura)
-	hooksecurefunc(GameTooltip, "SetUnitConsolidatedBuff", SetUnitConsolidatedBuff)
+	--hooksecurefunc(GameTooltip, "SetUnitConsolidatedBuff", SetUnitConsolidatedBuff)
 	GameTooltip:HookScript("OnTooltipSetSpell", GameTooltip_OnTooltipSetSpell)
 	hooksecurefunc("SetItemRef", SetItemRef)
 

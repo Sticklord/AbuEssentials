@@ -1,4 +1,4 @@
-## Interface: 60000
+## Interface: 70000
 ## Title: |cffffffffAbu|rSuxDix
 ## Author: Abu
 ## X-Credits: Mumin, for the name.

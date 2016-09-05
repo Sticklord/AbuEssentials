@@ -14,7 +14,7 @@ MiniMapTracking:UnregisterAllEvents()
 MiniMapTracking:Hide()
 
 -- Blip texture
-Minimap:SetBlipTexture("Interface\\AddOns\\AbuEssentials\\Textures\\Blip-BlizzardBig.tga")
+--Minimap:SetBlipTexture("Interface\\AddOns\\AbuEssentials\\Textures\\Blip-BlizzardBig.tga")
 
 -- Mousewheel zoom
 Minimap:EnableMouseWheel(true)

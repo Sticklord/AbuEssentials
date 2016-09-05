@@ -149,10 +149,10 @@ do
 				local link = GetContainerItemLink(bag, slot)
 
 				if link then
-					local _, count = GetContainerItemInfo(bag, slot)
+					local _, count, _, _, _, _, _, _, noValue = GetContainerItemInfo(bag, slot)
 					local _, _, quality, iLevel, _, class, _, _, _, _, vendorPrice = GetItemInfo(link)
 
-					if (quality == 0) or
+					if noValue and (quality == 0) or
 						(sellLowlevelGreens and sellClass[class] and quality <= 3 and iLevel < 500 and IsItemBOE(bag, slot))
 					then
 						UseContainerItem(bag, slot)
