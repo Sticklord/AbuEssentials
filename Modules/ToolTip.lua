@@ -662,8 +662,8 @@ local function LoadTooltips(event, name)
 	hooksecurefunc(GameTooltip, "SetUnitAura", SetUnitAura)
 	hooksecurefunc(GameTooltip, "SetUnitBuff", SetUnitAura)
 	hooksecurefunc(GameTooltip, "SetUnitDebuff", SetUnitAura)
-	GameTooltip:HookScript("OnTooltipSetItem", onTooltipSetItem)
 	GameTooltip:HookScript("OnTooltipSetSpell", GameTooltip_OnTooltipSetSpell)
+	GameTooltip:HookScript("OnTooltipSetItem", onTooltipSetItem)
 	hooksecurefunc("SetItemRef", SetItemRef)
 
 	-- Setup events
