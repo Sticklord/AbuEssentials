@@ -108,8 +108,6 @@ end
 
 local function SetUpStandards()
 	SetCVar("whisperMode", "popout_and_inline")
-	SetCVar("bnWhisperMode", "popout_and_inline")
-	SetCVar("conversationMode", "popout_and_inline")
 	SetCVar("showTutorials", 0)
 	SetCVar("chatStyle", "classic", "chatStyle")
 	SetCVar("autoLootDefault", 1, "AUTO_LOOT_DEFAULT_TEXT")
@@ -122,10 +120,6 @@ local function SetUpStandards()
 	SetCVar("autoDismount", 1)
 	SetCVar("autoDismountFlying", 1)
 	CreateBestChatLayout()
-
-	if AbuGlobal.EnableClassColorChat then
-		AbuGlobal.EnableClassColorChat()
-	end
 	
 	ns:Print("Fixed default settings.")
 end

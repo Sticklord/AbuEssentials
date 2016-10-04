@@ -16,10 +16,13 @@ local AddonName, ns = ...
 
 --]=======================================]
 
-local textureNormal = 'Interface\\AddOns\\AbuEssentials\\Textures\\Border\\textureNormal'
-local textureWhite = 'Interface\\AddOns\\AbuEssentials\\Textures\\Border\\textureWhite'
-local textureShadow = 'Interface\\AddOns\\AbuEssentials\\Textures\\Border\\textureShadow'
+
+
+local textureNormal = ns.GlobalConfig.IconTextures.Normal
+local textureWhite = ns.GlobalConfig.IconTextures.White
+local textureShadow = ns.GlobalConfig.IconTextures.Shadow
 local sections = { "TOPLEFT", "TOPRIGHT", "TOP", "BOTTOMLEFT", "BOTTOMRIGHT", "BOTTOM", "LEFT", "RIGHT" }
+local SHADOW_ADDITIONAL_PADDING = 0.25
 
 local function SetBorderColor(self, r, g, b, a)
 	local t = self.borderTextures
@@ -102,7 +105,7 @@ local function SetBorderPadding(self, T, B, L, R)
 		b.RIGHT:SetPoint("TOPRIGHT", b.TOPRIGHT, "BOTTOMRIGHT")
 		b.RIGHT:SetPoint("BOTTOMRIGHT", b.BOTTOMRIGHT, "TOPRIGHT")
 
-		local space = (self:GetBorderSize()) / 3.5
+		local space = self:GetBorderSize() * SHADOW_ADDITIONAL_PADDING
 
 		s.TOPLEFT:SetPoint("TOPLEFT", self, -(L+space), (T+space))
 		s.TOPRIGHT:SetPoint("TOPRIGHT", self, (R+space), (T+space))
@@ -121,55 +124,52 @@ end
 -----------------
 function ns.CreateBorder(self, size, padding, layer)
 	if type(self) ~= 'table' or self.borderTextures then return end
+	local b = {}
+	local s = {}
 
-	if not (self.borderTextures) then
-		local b = {}
-		local s = {}
-
-		for i = 1, 8 do 
-			local t = self:CreateTexture(nil, layer or 'OVERLAY')
-			t:SetParent(self)
-			t:SetTexture(textureNormal)
-			t:SetVertexColor(1, 1, 1, 1)
-			b[sections[i]] = t
-		end
-
-		for i = 1, 8 do 
-			local t = self:CreateTexture(nil, 'BORDER')
-			t:SetParent(self)
-			t:SetTexture(textureShadow)
-			t:SetVertexColor(0, 0, 0, 1)
-			s[sections[i]] = t
-		end
-
-		b.TOPLEFT:SetTexCoord(0, 1/3, 0, 1/3)
-		b.TOPRIGHT:SetTexCoord(2/3, 1, 0, 1/3)
-		b.TOP:SetTexCoord(1/3, 2/3, 0, 1/3)
-		b.BOTTOMLEFT:SetTexCoord(0, 1/3, 2/3, 1)
-		b.BOTTOMRIGHT:SetTexCoord(2/3, 1, 2/3, 1)
-		b.BOTTOM:SetTexCoord(1/3, 2/3, 2/3, 1)
-		b.LEFT:SetTexCoord(0, 1/3, 1/3, 2/3)
-		b.RIGHT:SetTexCoord(2/3, 1, 1/3, 2/3)
-
-		s.TOPLEFT:SetTexCoord(0, 1/3, 0, 1/3)
-		s.TOPRIGHT:SetTexCoord(2/3, 1, 0, 1/3)
-		s.TOP:SetTexCoord(1/3, 2/3, 0, 1/3)
-		s.BOTTOMLEFT:SetTexCoord(0, 1/3, 2/3, 1)
-		s.BOTTOMRIGHT:SetTexCoord(2/3, 1, 2/3, 1)
-		s.BOTTOM:SetTexCoord(1/3, 2/3, 2/3, 1)
-		s.LEFT:SetTexCoord(0, 1/3, 1/3, 2/3)
-		s.RIGHT:SetTexCoord(2/3, 1, 1/3, 2/3)
-
-		self.borderTextures = b
-		self.borderShadow = s
-
-		self.SetBorderColor = SetBorderColor
-		self.SetBorderShadowColor = SetBorderShadowColor
-		self.SetBorderTextureFile = SetBorderTextureFile
-		self.SetBorderSize = SetBorderSize
-		self.GetBorderSize = GetBorderSize
-		self.SetBorderPadding = SetBorderPadding
-		self:SetBorderSize(size or 11)
-		self:SetBorderPadding(padding or 3)
+	for i = 1, 8 do 
+		local t = self:CreateTexture(nil, layer or 'OVERLAY')
+		t:SetParent(self)
+		t:SetTexture(textureNormal)
+		t:SetVertexColor(1, 1, 1, 1)
+		b[sections[i]] = t
 	end
+
+	for i = 1, 8 do 
+		local t = self:CreateTexture(nil, 'BORDER')
+		t:SetParent(self)
+		t:SetTexture(textureShadow)
+		t:SetVertexColor(0, 0, 0, 1)
+		s[sections[i]] = t
+	end
+
+	b.TOPLEFT:SetTexCoord(0, 1/3, 0, 1/3)
+	b.TOPRIGHT:SetTexCoord(2/3, 1, 0, 1/3)
+	b.TOP:SetTexCoord(1/3, 2/3, 0, 1/3)
+	b.BOTTOMLEFT:SetTexCoord(0, 1/3, 2/3, 1)
+	b.BOTTOMRIGHT:SetTexCoord(2/3, 1, 2/3, 1)
+	b.BOTTOM:SetTexCoord(1/3, 2/3, 2/3, 1)
+	b.LEFT:SetTexCoord(0, 1/3, 1/3, 2/3)
+	b.RIGHT:SetTexCoord(2/3, 1, 1/3, 2/3)
+
+	s.TOPLEFT:SetTexCoord(0, 1/3, 0, 1/3)
+	s.TOPRIGHT:SetTexCoord(2/3, 1, 0, 1/3)
+	s.TOP:SetTexCoord(1/3, 2/3, 0, 1/3)
+	s.BOTTOMLEFT:SetTexCoord(0, 1/3, 2/3, 1)
+	s.BOTTOMRIGHT:SetTexCoord(2/3, 1, 2/3, 1)
+	s.BOTTOM:SetTexCoord(1/3, 2/3, 2/3, 1)
+	s.LEFT:SetTexCoord(0, 1/3, 1/3, 2/3)
+	s.RIGHT:SetTexCoord(2/3, 1, 1/3, 2/3)
+
+	self.borderTextures = b
+	self.borderShadow = s
+
+	self.SetBorderColor = SetBorderColor
+	self.SetBorderShadowColor = SetBorderShadowColor
+	self.SetBorderTextureFile = SetBorderTextureFile
+	self.SetBorderSize = SetBorderSize
+	self.GetBorderSize = GetBorderSize
+	self.SetBorderPadding = SetBorderPadding
+	self:SetBorderSize(size or 11)
+	self:SetBorderPadding(padding or 3)
 end

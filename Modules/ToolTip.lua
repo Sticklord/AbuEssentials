@@ -42,7 +42,7 @@ local Tooltips = {
 	ConsolidatedBuffsTooltip,
 	ShoppingTooltip1,
 	ShoppingTooltip2,
-	WorldMapTooltip,
+	WorldMapTooltip.BackdropFrame,
 	WorldMapCompareTooltip1,
 	WorldMapCompareTooltip2,
 	WorldMapCompareTooltip3,
@@ -51,6 +51,7 @@ local Tooltips = {
 	DropDownList3MenuBackdrop,
 	BNToastFrame,
 	SmallTextTooltip,
+	EmbeddedItemTooltip,
 }
 
 local COLORS = {
@@ -83,7 +84,7 @@ end
 -- Format Numbers
 local function GetFormattedValue(val)
 	if(val >= 1e6) then
-		return ("%.0fm"):format(val / 1e6)
+		return ("%.2fm"):format(val / 1e6)
 	elseif(val >= 1e3) then
 		return ("%.0fk"):format(val / 1e3)
 	else
@@ -148,43 +149,52 @@ local function SetTooltipStyle(self)
 						insets = {left = bgSize, right = bgSize, top = bgSize, bottom = bgSize}};
 	self:SetBackdrop(backdrop)
 
-	self:HookScript("OnShow", FixFuckingBlueColor)
-	self:HookScript("OnHide", FixFuckingBlueColor)
 	ns.CreateBorder(self, borderSize, 0)
 end
 
 -------------------------------------------------------------
 ----   Inspect Stuff
-local GetInspectInfo, TryInspect, requestedGUID
+
+local GetInspectInfo, TryInspect
 do
-	local GetInventoryItemTexture, GetInventoryItemLink, GetItemInfo, GetSpecialization, GetInspectSpecialization = 
-		GetInventoryItemTexture, GetInventoryItemLink, GetItemInfo, GetSpecialization, GetInspectSpecialization
-	local GetSpecializationRoleByID, GetSpecializationInfoByID, GetSpecializationInfo = 
-		GetSpecializationRoleByID, GetSpecializationInfoByID, GetSpecializationInfo 
+	local itemLevelPattern = _G.ITEM_LEVEL:gsub("%%d", "(%%d+)")
+	local tt = CreateFrame("GameTooltip", "AbuLevelScanTip", nil, "GameTooltipTemplate")
+	tt:SetOwner(WorldFrame, "ANCHOR_NONE")
 
-	local function GetItemLevel(unit)
-		local totlvl, numItems, numScanned = 0, 0, 0
+	local function GetItemLevel(unit, slot)
+		tt:ClearLines()
+		if not tt:SetInventoryItem(unit, slot, true) then
+			return false
+		end
 
-		for i = INVSLOT_FIRST_EQUIPPED, INVSLOT_LAST_EQUIPPED do
-			if (i ~= INVSLOT_BODY) and (i ~= INVSLOT_TABARD) then
-				if GetInventoryItemTexture(unit, i) then -- seems to be pretty accurate
-					numScanned = numScanned + 1
-				end
-
-				local link = GetInventoryItemLink(unit, i)
-				if link then
-					local _, _, _, iLevel = GetItemInfo(link)
-					numItems = numItems + 1
-					totlvl = totlvl + (iLevel or 0)
+		local ilvl
+		for i = 2, 5 do
+			local text = _G["AbuLevelScanTipTextLeft"..i]:GetText()
+			if text and text ~= '' then
+				ilvl = tonumber(text:match(itemLevelPattern))
+				if ilvl and ilvl > 0 then
+					break;
 				end
 			end
 		end
-
-		if (numItems == numScanned) and totlvl > 1 then
-			return floor(totlvl/numItems + .5)
-		end
-		return false
+		return ilvl
 	end
+
+	local function GetSumItemLevel(unit, startIndex, endIndex)
+		local totilvl = 0
+		local mainHandlvl, offHandlvl
+		for i = startIndex, endIndex do
+			if (i ~= INVSLOT_BODY) and (i ~= INVSLOT_TABARD) and (i ~= INVSLOT_RANGED) then
+				local ilvl = GetItemLevel(unit, i)
+				if not ilvl then 
+					return false 
+				end
+				totilvl = totilvl + ilvl
+			end
+		end
+		return totilvl
+	end
+
 
 	-- Get spec Icon 
 	local function GetSpecIcon(unit)
@@ -199,33 +209,50 @@ do
 		end
 	end
 
-	local MAX_INSPECTLIMIT, TIME_LIMIT = 6, 10
-	local notifyCount, startTime = 0, 0
-	hooksecurefunc("NotifyInspect", function() notifyCount = (notifyCount + 1); end)
-
-	local clearInspect = function() requestedGUID = nil end
+	local requestedGUID, currentGUID
+	local lastInspectTime = 0
 	function TryInspect()
 		if (InspectFrame and InspectFrame:IsShown()) or UnitIsDeadOrGhost("player") then
 			return true;
 		end
-
 		local now = GetTime()
-		if (now > startTime + TIME_LIMIT) then
-			notifyCount, startTime = 0, now
-		end
-
-		if (notifyCount >= MAX_INSPECTLIMIT) then
-			return;
-		end
+		if now - lastInspectTime < 1.5 then return; end
+		lastInspectTime = now
 
 		local unit = "mouseover"
 		local GUID = UnitExists(unit) and UnitGUID(unit)
-		if (GUID) and (requestedGUID ~= GUID) then
+
+		if (GUID) then
 			requestedGUID = GUID
 			NotifyInspect(unit)
-			C_Timer.After(2, clearInspect) -- Its outdated
 		end
 	end
+
+	local delayedItemScanner = CreateFrame('Frame')
+	delayedItemScanner:Hide()
+	delayedItemScanner:SetScript('OnUpdate', function(self, elapsed)
+		local unit = nil
+		if UnitExists('mouseover') and UnitGUID('mouseover') == currentGUID then
+			unit = 'mouseover'
+		elseif UnitExists('target') and UnitGUID('target') == currentGUID then
+			unit = 'target'
+		end
+
+		if unit then
+			local itemLevel = GetSumItemLevel(unit, 1, 15) 
+			local weaponIlvl = math.max(GetSumItemLevel(unit, 16, 16) or 0,  GetSumItemLevel(unit, 17, 17) or 0)-- some classes have high level in offhand 
+			if itemLevel and weaponIlvl > 0 then
+				local cache = GameTooltip.inspectCache[currentGUID]
+				local ilvl = math.floor((itemLevel + weaponIlvl)/15)
+				if cache.iLvl and cache.iLvl == ilvl or unit == 'target' then -- 2 times same ilvl, MUST BE GOOD (good enough for me anyways)
+					cache.lastUpdate = floor(GetTime() + 180)
+				end
+				cache.iLvl = ilvl
+
+			end
+		end
+		self:Hide()
+	end)
 
 	GameTooltip:HookScript("OnEvent", function(self, event, ...)
 		local unit = "mouseover"
@@ -235,35 +262,24 @@ do
 				self:SetUnit(unit)
 			end
 		elseif event == "INSPECT_READY" then
-			local GUID = ...
-			if (requestedGUID ~= GUID) then 
-				return
+			currentGUID = ...
+
+			self.inspectCache[currentGUID] = self.inspectCache[currentGUID] or { }
+			local cache = self.inspectCache[currentGUID]
+			cache.lastUpdate = 0
+
+			-- Fetch data while we got inspect
+			local icon = GetSpecIcon(unit)
+			if icon then
+				cache.icon = icon
 			end
-
-			if (UnitExists(unit)) then
-				
-				self.inspectCache[GUID] = self.inspectCache[GUID] or { }
-				local cache = self.inspectCache[GUID]
-
-				requestedGUID = nil
-				cache.lastUpdate = floor(GetTime() + 120)
-
-				-- Fetch data while we got inspect
-				local icon = GetSpecIcon(unit)
-				if icon then
-					cache.icon = icon
-				end
-				local iLvl = GetItemLevel(unit)
-				if iLvl then
-					cache.iLvl = iLvl
-					ClearInspectPlayer()
-				end
-
-				-- Update tooltip
-				self:SetUnit(unit)
+			delayedItemScanner:Show()
+			if UnitExists('mouseover') then
+				GameTooltip:SetUnit('mouseover')
 			end
 		end
 	end)
+	GameTooltip:RegisterEvent('UNIT_INVENTORY_CHANGED')
 
 	-- Getting the inspect Info, sometimes
 	function GetInspectInfo(self, unit, level, needIlvl)
@@ -288,7 +304,6 @@ do
 				return icon, iLvl
 			end
 		end
-
 		TryInspect()
 		return icon, iLvl
 	end
@@ -322,7 +337,7 @@ do
 
 				TryInspect()
 				found = true
-				break;
+				return;
 			end
 		end
 		if not found then
@@ -436,7 +451,7 @@ GameTooltip:HookScript("OnTooltipSetUnit", function(self)
 
 		local pvpFlag = ""
 		local race, class, colorString
-		if canInspect then
+		if canInspect and UnitIsPlayer(unit) then
 			local englishRace
 			race, englishRace = UnitRace(unit)
 			local _, factionGroup = UnitFactionGroup(unit)
@@ -465,7 +480,6 @@ GameTooltip:HookScript("OnTooltipSetUnit", function(self)
 				self:AddDoubleLine(ILVL_PREFIX, "|cFFFFFFFF"..iLvl)
 			else
 				self:AddDoubleLine(ILVL_PREFIX, " ")
-				dotmaker.count = 1
 				dotmaker:Show()
 			end
 		end
@@ -550,11 +564,6 @@ local function SetUnitAura(self, unit, index, filter)
 	end
 end
 
-local function SetUnitConsolidatedBuff(self, unit, index)
-	local name = GetRaidBuffTrayAuraInfo(index)
-	SetUnitAura(self, unit, name)
-end
-
 local function GameTooltip_OnTooltipSetSpell(self)
 	local _, _, id = self:GetSpell()
 	if not id or not ShowIDs then return end
@@ -590,6 +599,18 @@ local function FixShoppingPosition(self, p, par, rp, x, y)
 	self:SetPoint(p, par, rp, x, y)
 end
 
+local function onTooltipSetItem(self)
+	if not ShowIDs then return end
+	local _, link = self:GetItem()
+	if link then
+		local id = link:match('item:(%d*)')
+		if id then
+			self:AddLine(("|cFFCA3C3C%s|r %d"):format(ID, id))
+			self:Show()
+		end
+	end
+end
+
 local function LoadTooltips(event, name)
 	-- Setup variables
 	playerGUID = UnitGUID("player")
@@ -602,6 +623,8 @@ local function LoadTooltips(event, name)
 
 	for _, tip in pairs(Tooltips) do
 		SetTooltipStyle(tip)
+		tip:HookScript("OnShow", FixFuckingBlueColor)
+		tip:HookScript("OnHide", FixFuckingBlueColor)
 	end
 
 	-- Skin Statusbar
@@ -639,7 +662,7 @@ local function LoadTooltips(event, name)
 	hooksecurefunc(GameTooltip, "SetUnitAura", SetUnitAura)
 	hooksecurefunc(GameTooltip, "SetUnitBuff", SetUnitAura)
 	hooksecurefunc(GameTooltip, "SetUnitDebuff", SetUnitAura)
-	--hooksecurefunc(GameTooltip, "SetUnitConsolidatedBuff", SetUnitConsolidatedBuff)
+	GameTooltip:HookScript("OnTooltipSetItem", onTooltipSetItem)
 	GameTooltip:HookScript("OnTooltipSetSpell", GameTooltip_OnTooltipSetSpell)
 	hooksecurefunc("SetItemRef", SetItemRef)
 

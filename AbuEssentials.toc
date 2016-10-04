@@ -5,11 +5,10 @@
 
 libs\AbuTheLib.lua
 
-Tools\animations.lua
-Tools\api.lua
-
 defaults.lua
 CONFIG.lua
+
+Tools\border.lua
 
 Core.lua
 Scripts.lua
@@ -26,3 +25,4 @@ Skins\AddOns.lua
 Skins\MiniMap.lua
 Skins\Recolor.lua
 Skins\SpeechBubbles.lua
+Skins\OrderHall.lua

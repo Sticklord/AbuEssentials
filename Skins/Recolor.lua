@@ -76,31 +76,28 @@ local frames = {
 	"ReputationWatchBarTexture2",
 	"ReputationWatchBarTexture3",
 
-	"MainMenuXPBarDiv1",
-	"MainMenuXPBarDiv2",
-	"MainMenuXPBarDiv3",
-	"MainMenuXPBarDiv4",
-	"MainMenuXPBarDiv5",
-	"MainMenuXPBarDiv6",
-	"MainMenuXPBarDiv7",
-	"MainMenuXPBarDiv8",
-	"MainMenuXPBarDiv9",
-	"MainMenuXPBarDiv10",
-	"MainMenuXPBarDiv11",
-	"MainMenuXPBarDiv12",
-	"MainMenuXPBarDiv13",
-	"MainMenuXPBarDiv14",
-	"MainMenuXPBarDiv15",
-	"MainMenuXPBarDiv16",
-	"MainMenuXPBarDiv17",
-	"MainMenuXPBarDiv18",
-	"MainMenuXPBarDiv19",
-
 	ArtifactWatchBar.StatusBar.WatchBarTexture0,
 	ArtifactWatchBar.StatusBar.WatchBarTexture1, 
 	ArtifactWatchBar.StatusBar.WatchBarTexture2, 
 	ArtifactWatchBar.StatusBar.WatchBarTexture3,
+	ArtifactWatchBar.StatusBar.XPBarTexture0,
+	ArtifactWatchBar.StatusBar.XPBarTexture1,
+	ArtifactWatchBar.StatusBar.XPBarTexture2,
+	ArtifactWatchBar.StatusBar.XPBarTexture3,
 }
+
+for i = 1, 19 do
+	table.insert(frames, "MainMenuXPBarDiv"..i)
+end
+
+-- BAGS
+for i = 1, 13 do
+	table.insert(frames, "ContainerFrame"..i.."BackgroundTop")
+	table.insert(frames, "ContainerFrame"..i.."BackgroundMiddle1")
+	table.insert(frames, "ContainerFrame"..i.."BackgroundMiddle2")
+	table.insert(frames, "ContainerFrame"..i.."BackgroundBottom")
+end
+
 
 local function Paint(obj)
 

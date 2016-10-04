@@ -43,7 +43,7 @@ ns.Config = {
 ns.GlobalConfig = {
 	Colors = {
 		Frame = 	{ 0.5, 0.5, 0.4 }, -- Colors to skin the blizzard things.
-		Border = 	{ 0.9, 0.9, 0.8 }, -- Colors for button borders
+		Border = 	{ 0.7, 0.7, 0.6 }, -- Colors for button borders
 		Interrupt = { .9, .8, .2 },
 	},
 	Fonts = {
@@ -57,14 +57,14 @@ ns.GlobalConfig = {
 		Light = path.."tex.tga",
 	},
 	IconTextures = {
-		Normal = path..'Border\\textureNormal',
-		Background = path..'Border\\textureBackground',
-		Highlight = path..'Border\\textureHighlight',
-		Checked = path..'Border\\textureChecked',
-		Pushed = path..'Border\\texturePushed',
-		Shadow = path..'Border\\textureShadow',
-		White = path..'Border\\textureWhite',
-		Debuff = path..'Border\\textureDebuff',
-		Flash = nil,
+		Normal = path..'Border\\normal',
+		Background = path..'Border\\background',
+		Highlight = path..'Border\\highlight',
+		Checked = path..'Border\\checked',
+		Pushed = path..'Border\\pushed',
+		Shadow = path..'Border\\shadow',
+		White = path..'Border\\white',
+		Debuff = path..'Border\\normal',
+		Flash = path..'Border\\flash',
 	},
 }

@@ -1,7 +1,14 @@
 local _, ns = ...
 
+local Standard = ns.GlobalConfig.Fonts.Normal
+local Fancy = ns.GlobalConfig.Fonts.Fancy
+-- Game engine fonts
+_G.STANDARD_TEXT_FONT = Standard
+_G.NAMEPLATE_FONT = Standard
+_G.UNIT_NAME_FONT = Standard
+_G.DAMAGE_TEXT_FONT = ns.GlobalConfig.Fonts.Damage
 -- Based off tektickles i believe, by Tekkub
-
+if true then return end
 local function ChangeFont(obj, font, size, style, shadow)
 	obj:SetFont(font, size, style)
 	if (shadow) then
@@ -10,8 +17,6 @@ local function ChangeFont(obj, font, size, style, shadow)
 end
 
 -- Change fonts
-local Standard = ns.GlobalConfig.Fonts.Normal
-local Fancy = ns.GlobalConfig.Fonts.Fancy
 
 local Small    = 12
 local Medium   = 13
@@ -64,9 +69,3 @@ ChangeFont(FriendsFont_Large                 	, Standard		, Large 	, nil				, fa
 ChangeFont(CombatTextFont					 	, Standard  	, 150       , "THINOUTLINE"		, false 	)
 
 _G.CHAT_FONT_HEIGHTS = {7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24}
-
--- Game engine fonts
-_G.STANDARD_TEXT_FONT = Standard
-_G.NAMEPLATE_FONT = Standard
-_G.UNIT_NAME_FONT = Standard
-_G.DAMAGE_TEXT_FONT = ns.GlobalConfig.Fonts.Damage

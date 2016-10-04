@@ -35,7 +35,8 @@ ns.Config.SkinMinimap = true -- Skin the minimap
 ns.Config.PopBubbles = true -- Remove border around speech bubbles
 
 
--- global setting for all abu addons. Mainly colors, textures, fonts etc.
+-- Global setting for all abu addons. Mainly colors, textures, fonts etc.
+
 ns.GlobalConfig.Colors.Frame = 	{ 0.5, 0.5, 0.4 } -- Colors to skin the blizzard things.
 ns.GlobalConfig.Colors.Border = 	{ 0.9, 0.9, 0.8 } -- Colors for button borders
 ns.GlobalConfig.Colors.Interrupt = { .9, .8, .2 }

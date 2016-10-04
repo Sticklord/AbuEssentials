@@ -2,9 +2,6 @@ local name, ns = ...
 
 _G['AbuGlobal'] = {
 	GlobalConfig = ns.GlobalConfig,
-	SetupFrameForSliding = ns.SetupFrameForSliding,
-	UIFrameFadeIn = ns.UIFrameFadeIn,
-	UIFrameFadeOut = ns.UIFrameFadeOut,
 	CreateBorder = ns.CreateBorder,
 }
 ---------------------------------------------------------------------------
@@ -70,3 +67,59 @@ SlashCmdList.IN = function(input)
 		box:GetScript("OnEvent")(box, "EXECUTE_CHAT_LINE", cmd)
 	end)
 end
+
+---------
+-- Map
+for i = 1, 4 do
+	_G["WorldMapParty"..i]:SetSize(25,25)
+end
+for i = 1, 40 do
+	_G["WorldMapRaid"..i]:SetSize(20,20)
+end
+
+local playerCoords = WorldMapFrame.UIElementsFrame:CreateFontString("$parentPlayerCoordsText", "OVERLAY", "GameFontHighlightSmall")
+local cursorCoords = WorldMapFrame.UIElementsFrame:CreateFontString("$parentCursorCoordsText", "OVERLAY", "GameFontHighlightSmall")
+playerCoords:SetPoint('BOTTOMRIGHT', WorldMapFrame.UIElementsFrame, 'BOTTOM', -50, 10)
+playerCoords:Show()
+cursorCoords:SetPoint('BOTTOMLEFT', WorldMapFrame.UIElementsFrame, 'BOTTOM', 50, 10)
+cursorCoords:Show()
+local function getCursorCoords()
+	local x, y = GetCursorPosition()
+	local left, top = WorldMapDetailFrame:GetLeft(), WorldMapDetailFrame:GetTop()
+	local width = WorldMapDetailFrame:GetWidth()
+	local height = WorldMapDetailFrame:GetHeight()
+	local scale = WorldMapDetailFrame:GetEffectiveScale()
+	local cx = (x/scale - left) / width
+	local cy = (top - y/scale) / height
+
+	if cx < 0 or cx > 1 or cy < 0 or cy > 1 then
+		return nil, nil
+	end
+
+	return cx, cy
+end
+
+local minElapsed = 0
+local elapsed = minElapsed
+local function worldMap_OnUpdate(self, e)
+	elapsed = elapsed - e
+	if elapsed > 0 then
+		return
+	end
+	elapsed = minElapsed
+
+	local px, py = GetPlayerMapPosition("player")
+	if px and py and px > 0 and py > 0 then
+		playerCoords:SetFormattedText('Player: %d, %d', px*100, py*100)
+	else
+		playerCoords:SetText('Player: --, --')
+	end
+
+	local cx, cy = getCursorCoords()
+	if not cx then
+		cursorCoords:SetText('Cursor: --, --')
+	else
+		cursorCoords:SetFormattedText('Cursor: %d, %d', cx*100, cy*100)
+	end
+end
+WorldMapFrame:SetScript('OnUpdate', worldMap_OnUpdate)
